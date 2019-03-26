@@ -341,14 +341,55 @@ Example cat1 : category := catn 1.
 Example cat0 : category := catn 0.
 Example square : category := catn 4.
 
+Section Limit.
 Variable C : category.
-Example trivial_embedding (A : Ob C) : Fun(cat1, C).
+Example trivial_embedding1 (A : Ob C) : Fun(cat1, C).
 refine (@Functor _ _ (fun _ => A) (fun _ _ _ => id) _ _ _) => //; intros.
 + rewrite /equals; apply Equivalence.reflexivity.
 + rewrite /equals Equivalence.symmetricity.
   apply identity_morphism_is_right_identity.
 + rewrite /equals; apply Equivalence.reflexivity.
-Qed.
+Defined.
 
-Example initial_object 
+Definition trivial_embedding0_ob (A : Ob cat0) : Ob C.
+case: A => [] //.
+Defined.
+
+Definition trivial_embedding0_mor (A B : Ob cat0) :
+  Mor(A, B) ->
+  Mor(trivial_embedding0_ob A, trivial_embedding0_ob B).
+case: A => [] //.
+Defined.
+
+Example trivial_embedding0 : Fun(cat0, C).
+refine (@Functor _ _ trivial_embedding0_ob trivial_embedding0_mor _ _ _)
+        => //; case => //.
+Defined.
+
+Definition final_object (L : Ob C) := limit trivial_embedding0 L.
+
+Definition opposite_category : category.
+refine (@Category (Ob C)
+                  (fun A B => Mor(B, A))
+                  (fun A B => @equivMixin C B A)
+                  (fun _ _ _ f g => g \comp f)
+                  (@id C) _ _ _ _ _) => //.
+move => D E F G /= h i j.
+rewrite Equivalence.symmetricity.
+apply associativity_of_morphisms.
+move => A B /= f.
+apply identity_morphism_is_left_identity.
+move => A B /= f.
+apply identity_morphism_is_right_identity.
+move => D E F /= f f' g Eq.
+apply compatibility_right.
+rewrite Equivalence.symmetricity //.
+move => D E F /= f f' g Eq.
+apply compatibility_left.
+rewrite Equivalence.symmetricity //.
+Defined.
+End Limit.
+
+Local Notation "'Op' C" := (opposite_category C) (at level 1).
+
 End Category.
