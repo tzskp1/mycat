@@ -337,9 +337,11 @@ refine (@Category (ordinal n)
                   (@catn_id n)  _ _ _ _ _) => //.
 Defined.
 
-Example cat1 : category := catn 1.
 Example cat0 : category := catn 0.
-Example square : category := catn 4.
+Example cat1 : category := catn 1.
+Example cat2 : category := catn 2.
+Example cat4 : category := catn 4.
+Notation square := cat4.
 
 Section Limit.
 Variable C : category.
@@ -366,7 +368,48 @@ refine (@Functor _ _ trivial_embedding0_ob trivial_embedding0_mor _ _ _)
         => //; case => //.
 Defined.
 
-Definition final_object (L : Ob C) := limit trivial_embedding0 L.
+Definition trivial_embedding2_ob (E F : Ob C) (A : Ob cat2) :=
+  match A with
+  | Ordinal 0 _ => E
+  | Ordinal 1 _ => F
+  | Ordinal _ _ => F (* absurd case *)
+  end.
+
+Definition trivial_embedding2_mor (A B : Ob C) (g : Mor(A, B)) (E F : Ob cat2) (f : Mor(E, F)) :
+    Mor(trivial_embedding2_ob A B E, trivial_embedding2_ob A B F).
+case: E F f => [m Hm] [n Hn] f.
+case: m Hm f => [|m] Hm f.
+ case: n Hn f => [|n] Hn f.
+  apply id.
+ case: n Hn f => [|n] Hn f.
+  apply g.
+ case: n Hn f => //.
+case: m Hm f => [|m] Hm f.
+ case: n Hn f => [|n] Hn //= f.
+ case: n Hn f => [|n] Hn //= f.
+ apply id.
+case: m Hm f => //.
+Defined.
+
+Example trivial_embedding2 (A B : Ob C) (f : Mor(A, B)) : Fun(cat2, C).
+refine (@Functor _ _ (trivial_embedding2_ob A B)
+                 (@trivial_embedding2_mor A B f)
+                 _ _ _) => //.
+case => m Hm.
+repeat case:m Hm => [|m] Hm //=; apply Equivalence.reflexivity.
+case => [m Hm] [n Hn] [p Hp] h i.
+repeat case:m Hm h => [|m] Hm h //=;
+repeat case:n Hn i h => [|n] Hn i h //=;
+repeat case:p Hp i h => [|p] Hp i h //=;
+rewrite /equals Equivalence.symmetricity;
+try apply identity_morphism_is_left_identity;
+apply identity_morphism_is_right_identity.
+case => [m Hm] [n Hn] h i H.
+repeat case:m Hm i h H => [|m] Hm i h H //=;
+repeat case:n Hn i h H => [|n] Hn i h H //=;
+repeat case:p Hp i h H => [|p] Hp i h H //=;
+apply Equivalence.reflexivity.
+Defined.
 
 Definition opposite_category : category.
 refine (@Category (Ob C)
@@ -388,8 +431,17 @@ move => D E F /= f f' g Eq.
 apply compatibility_left.
 rewrite Equivalence.symmetricity //.
 Defined.
+
+Definition final_object L := limit trivial_embedding0 L.
+Definition kernel A B (f : Mor(A, B)) L := limit (trivial_embedding2 f) L.
 End Limit.
 
 Local Notation "'Op' C" := (opposite_category C) (at level 1).
 
+Section CoLimit.
+Variable C : category.
+Definition initinal_object L := limit (@trivial_embedding0 (Op C)) L.
+Definition cokernel A B (f : Mor(A, B)) L :=
+  limit (@trivial_embedding2 (Op C) _ _ f) L.
+End CoLimit.
 End Category.
