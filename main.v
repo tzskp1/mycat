@@ -311,37 +311,44 @@ From mathcomp Require Import eqtype fintype seq finset ssrnat.
 >     >
 2 --> 3
 *)
-Definition square_base n (x y : ordinal n) :=
+Definition catn_base n (x y : ordinal n) :=
   match x, y with
   | Ordinal i _, Ordinal j _ => i <= j : Type
   end.
 
-Definition square_comp n
+Definition catn_comp n
            (x y z : ordinal n)
-           (g : square_base y z)
-           (f : square_base x y) : square_base x z.
+           (g : catn_base y z)
+           (f : catn_base x y) : catn_base x z.
 case: x y z f g => [x Hx] [y Hy] [z Hz] /=.
 exact: leq_trans.
 Defined.
 
-Definition square_id n (x : ordinal n) : square_base x x.
+Definition catn_id n (x : ordinal n) : catn_base x x.
 case: x => [x Hx] /=.
 exact: leqnn.
 Defined.
 
-Example square : category.
-refine (@Category (ordinal 4)
-                  (@square_base 4)
-                  (fun A B => Equivalence.trivialMixin (square_base A B))
-                  (@square_comp 4)
-                  (@square_id 4)  _ _ _ _ _) => //.
+Example catn (n :  nat) : category.
+refine (@Category (ordinal n)
+                  (@catn_base n)
+                  (fun A B => Equivalence.trivialMixin (catn_base A B))
+                  (@catn_comp n)
+                  (@catn_id n)  _ _ _ _ _) => //.
 Defined.
 
-Example cat0 : category.
-refine (@Category (ordinal 1)
-                  (@square_base 1)
-                  (fun A B => Equivalence.trivialMixin (square_base A B))
-                  (@square_comp 1)
-                  (@square_id 1)  _ _ _ _ _) => //.
-Defined.
+Example cat1 : category := catn 1.
+Example cat0 : category := catn 0.
+Example square : category := catn 4.
+
+Variable C : category.
+Example trivial_embedding (A : Ob C) : Fun(cat1, C).
+refine (@Functor _ _ (fun _ => A) (fun _ _ _ => id) _ _ _) => //; intros.
++ rewrite /equals; apply Equivalence.reflexivity.
++ rewrite /equals Equivalence.symmetricity.
+  apply identity_morphism_is_right_identity.
++ rewrite /equals; apply Equivalence.reflexivity.
+Qed.
+
+Example initial_object 
 End Category.
