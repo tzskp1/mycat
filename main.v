@@ -1,4 +1,4 @@
-From mathcomp Require Import ssreflect ssrbool.
+From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -7,22 +7,23 @@ Unset Printing Implicit Defensive.
 Module Equivalence.
 Structure mixin_of T :=
   Mixin {
-      op : T -> T -> bool;
-      symmetricity : forall (f g : T), op f g = op g f;
+      op : T -> T -> Prop;
+      symmetricity : forall (f g : T), op f g <-> op g f;
       transitivity : forall (f g h : T), op f g -> op g h -> op f h;
       reflexivity : forall (f : T), op f f;
     }.
 
-From mathcomp Require Import eqtype fintype seq finset ssrnat.
-
-Definition eqTypeMixin (T : eqType) : mixin_of T :=
-  @Mixin T
+Definition eqTypeMixin (T : eqType) : mixin_of T.
+  refine (@Mixin T
          eq_op
-         (@eq_sym T)
+         _
          (fun (f g h : T) (V : f == g) => eq_ind_r (fun x : T => g == h -> x == h) (fun x : g == h => x) (elimTF eqP V))
-         (@eqxx T).
+         (@eqxx T)).
+  intros; by rewrite eq_sym.
+Defined.
+
 Definition trivialMixin T : mixin_of T :=
-  @Mixin _ (fun _ _ => true) (fun _ _ => eqxx true) (fun _ _ _ _ x => x) (fun _ => eqxx true).
+  @Mixin _ (fun _ _ => true) (fun _ _ => conj id id) (fun _ _ _ _ x => x) (fun _ => eqxx true).
 Definition falseMixin : mixin_of false := trivialMixin false.
 Definition unitMixin : mixin_of unit := trivialMixin unit.
 Definition trueMixin : mixin_of true := trivialMixin true.
@@ -38,20 +39,22 @@ refine (@Mixin (s * e)
                (fun s' e' : s * e =>
                   let (s1, e1) := s' in
                   let (s2, e2) := e' in
-                  op Ms s1 s2 && op Me e1 e2)
+                  op Ms s1 s2 /\ op Me e1 e2)
                _ _ _).
 case => [s1 e1] [s2 e2].
-apply (eq_and (symmetricity Ms s1 s2) (symmetricity Me e1 e2)).
+by move: (symmetricity Ms s1 s2) (symmetricity Me e1 e2) => -> ->.
 case => [s1 e1] [s2 e2] [s3 e3].
-case/andP => Hs12 He12.
-case/andP => Hs23 He23.
-apply/andP; split.
+case => Hs12 He12.
+case => Hs23 He23.
+split.
 apply (@transitivity _ Ms _ _ _ Hs12 Hs23).
 apply (@transitivity _ Me _ _ _ He12 He23).
 case => [s1 e1].
-rewrite (reflexivity Ms) (reflexivity Me) //.
+split;
+  first exact: reflexivity Ms s1.
+exact: reflexivity Me e1.
 Defined.
-Definition natMixin s : Equivalence.mixin_of (ordinal s).
+Definition natMixin s : mixin_of (ordinal s).
 refine (@Mixin _
                (fun a b =>
                   match a, b with
@@ -67,81 +70,158 @@ Defined.
 End Equivalence.
 
 (* locally small category *)
-Module Category.
-Structure category :=
+Module Axioms.
+Section Equiv.
+ Import Equivalence.
+ Variable objects : Type.
+ Variable morphisms : objects -> objects -> Type.
+ Variable id : forall (A : objects), morphisms A A.
+ Variable comp : forall {A B C : objects}, morphisms B C -> morphisms A B -> morphisms A C.
+ Variable cmp: forall (A B : objects), mixin_of (morphisms A B).
+ Local Notation "f '\comp' g" := (comp f g) (at level 40).
+ Local Notation "f == g" := (op (cmp _ _) f g).
+ Local Definition associativity_of_morphisms :=
+   forall D E F G
+          (h : morphisms D E)
+          (i : morphisms E F)
+          (j : morphisms F G),
+   (j \comp i) \comp h == j \comp (i \comp h).
+ Local Definition identity_morphism_is_right_identity :=
+   forall A B (f : morphisms A B), f == f \comp id A.
+ Local Definition identity_morphism_is_left_identity :=
+   forall A B (f : morphisms A B), f == id B \comp f.
+ Local Definition compatibility_left :=
+   forall D E F (f f': morphisms D E) (g : morphisms E F),
+   f == f' -> g \comp f == g \comp f'.
+ Local Definition compatibility_right :=
+   forall D E F (f : morphisms D E) (g g' : morphisms E F),
+   g == g' -> g \comp f == g' \comp f.
+End Equiv.
+Module Exports.
+Polymorphic Structure category :=
   Category {
-      objects : Type;
-      morphisms : objects -> objects -> Type;
-      equivMixin : forall {A B : objects}, Equivalence.mixin_of (morphisms A B);
-      comp : forall {A B C : objects}, morphisms B C -> morphisms A B -> morphisms A C;
-      id : forall {A : objects}, morphisms A A;
-      associativity_of_morphisms :
-         forall {D E F G : objects},
-           let equals := Equivalence.op equivMixin in
-           forall (h : morphisms D E)
-                  (i : morphisms E F)
-                  (j : morphisms F G),
-             equals (comp (comp j i) h) (comp j (comp i h));
-      identity_morphism_is_right_identity :
-        forall {A B : objects},
-          let equals := Equivalence.op equivMixin in
-          forall (f : morphisms A B), equals (comp f id) f;
-      identity_morphism_is_left_identity :
-        forall {A B : objects},
-          let equals := Equivalence.op equivMixin in
-          forall (f : morphisms A B), equals (comp id f) f;
-      compatibility_left :
-        forall {D E F : objects} (f f': morphisms D E) (g : morphisms E F),
-          Equivalence.op equivMixin f f' ->
-          Equivalence.op equivMixin (comp g f) (comp g f');
-      compatibility_right :
-        forall {D E F : objects} (f : morphisms D E) (g g' : morphisms E F),
-          Equivalence.op equivMixin g g' ->
-          Equivalence.op equivMixin (comp g' f) (comp g f);
+      objects : _;
+      morphisms : _;
+      equiv: _;
+      id: _;
+      comp: _;
+      associativity : @associativity_of_morphisms objects morphisms comp equiv;
+      right_idem : @identity_morphism_is_right_identity objects morphisms id comp equiv;
+      left_idem : @identity_morphism_is_left_identity objects morphisms id comp equiv;
+      comp_left : @compatibility_left objects morphisms comp equiv;
+      comp_right : @compatibility_right objects morphisms comp equiv;
     }.
+Notation "f '\comp' g" := (comp f g) (at level 40).
+Notation "f == g" := (Equivalence.op (equiv _ _) f g).
+Notation "'Ob' C" := (objects C) (at level 1).
+Notation "'Mor' ( M , N )" := (morphisms M N) (at level 5).
+Arguments id [c A].
+End Exports.
+End Axioms.
+Export Axioms.Exports.
+  
+Structure functor (domain codomain : category) :=
+  Functor {
+      map_of_objects :> Ob domain -> Ob codomain;
+      map_of_morphisms : forall (A B : Ob domain), Mor (A, B) -> Mor (map_of_objects A, map_of_objects B);
+      _ : forall (A : Ob domain),
+          (@map_of_morphisms A A id) == id;
+      _ : forall (A B C : Ob domain) (f : Mor (A, B)) (g : Mor (B, C)),
+          (map_of_morphisms (g \comp f)) == (map_of_morphisms g \comp (map_of_morphisms f));
+      _ : forall (A B : Ob domain) (f f' : Mor (A, B)),
+          f == f' ->
+          (map_of_morphisms f) == (map_of_morphisms f');
+    }.
+Notation "'Fun' ( C , D )" := (functor C D).
+Notation "' F " := (map_of_morphisms F) (at level 1).
 
-Local Notation "'Ob' C" := (objects C) (at level 1).
-Local Notation "'Mor' ( M , N )" := (morphisms M N) (at level 3).
-Local Notation "f '\comp' g" := (comp f g) (at level 40).
-Definition equals {C : category} {A B : Ob C} :=
-  Equivalence.op (@equivMixin C A B).
-Local Notation "f '==' g" := (equals f g) (at level 70, no associativity).
+Inductive isomorphisms {C : category} {A B : Ob C} (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
+  Isomorphisms : (g \comp f) == id -> (f \comp g) == id -> isomorphisms f g.
 
-Inductive functor (domain codomain : category) : Type :=
-  Functor :
-    forall (map_of_objects : Ob domain -> Ob codomain)
-           (map_of_morphisms : forall {A B : Ob domain}, Mor (A, B) -> Mor (map_of_objects A, map_of_objects B)),
-           (forall {A : Ob domain}, (@map_of_morphisms A A id) == id) ->
-           (forall {A B C : Ob domain} (f : Mor (A, B)) (g : Mor (B, C)),
-            map_of_morphisms (g \comp f) == map_of_morphisms g \comp map_of_morphisms f) ->
-           (forall {A B : Ob domain} (f f' : Mor (A, B)),
-               f == f' -> map_of_morphisms f == map_of_morphisms f') -> 
-      functor domain codomain.
+Hint Resolve (proj1 (Equivalence.symmetricity _ _ _)) Equivalence.reflexivity.
+Polymorphic Hint Resolve right_idem left_idem.
 
-Local Notation "'Fun' ( C , D )" := (functor C D).
-Definition map_of_objects (C C' : category) (F : Fun (C, C')) :=
-  match F with
-  | Functor map_of_objects map_of_morphisms _ _ _ =>
-    map_of_objects
-  end.
-Definition map_of_morphisms {C C' : category} {A B : Ob C} (F : Fun (C, C')) :
-  Mor (A, B) -> Mor (map_of_objects F A, map_of_objects F B) :=
-  match F with
-  | Functor _ map_of_morphisms _ _ _ =>
-    map_of_morphisms A B
-  end.
-Coercion map_of_objects : functor >-> Funclass.
-Local Notation "' F " := (map_of_morphisms F) (at level 1).
+Lemma comp0m C (D E : Ob C) (f : Mor (D, E)) : f == id \comp f.
+Proof.
+  info_auto.
+    by apply Equivalence.symmetricity, identity_morphism_is_left_identity. Qed.
 
-Inductive isomorphisms {C : category} {A B : Ob C} : Mor (A, B) -> Mor (B, A) -> Type :=
-  Isomorphisms : forall (f : Mor (A, B)) (g : Mor (B, A)),
-    (g \comp f) == id -> (f \comp g) == id -> isomorphisms f g.
+Lemma compm0 C (D E : Ob C) (f : Mor (D, E)) : f == f \comp id.
+Proof. by apply Equivalence.symmetricity, identity_morphism_is_right_identity. Qed.
+
+
+Lemma subst_right_up_to_equals {C : category} (D E F : Ob C) (f f' : Mor (D, E)) (g : Mor (E, F)) (h : Mor (D, F)) :
+  f == f' -> (h == g \comp f) <-> (h == g \comp f').
+Proof.
+move => H1.
+have : (g \comp f) == (g \comp f') by rewrite /equals; apply: compatibility_left.
+rewrite /equals => H3.
+split => H2;
+ (apply: Equivalence.transitivity;
+   first by apply: H2);
+ by auto.
+Qed.
+
+Lemma subst_left_up_to_equals {C : category} (D E F : Ob C) (f : Mor (D, E)) (g g' : Mor (E, F)) (h : Mor (D, F)) :
+  g == g' -> (h == g \comp f) <-> (h == g' \comp f).
+Proof.
+move => H1.
+have : (g \comp f) == (g' \comp f) by rewrite /equals; apply: compatibility_right; auto.
+rewrite /equals => H3.
+split => H2;
+ (apply: Equivalence.transitivity;
+   first by apply: H2);
+ by auto.
+Qed.
+
+(* Hint View for move/ elimTF|3 elimNTF|3 elimTFn|3 introT|2 introTn|2 introN|2. *)
+
+Lemma congr_up_to_equals
+      {C : category}
+      (D E F G : Ob C)
+      (f : Mor (D, E))
+      (f' : Mor (D, F))
+      (g : Mor (E, G))
+      (g' : Mor (F, G))
+      (h : Mor (E, F)) (i : Mor (F, E)) (I : isomorphisms h i) :
+  h \comp f == f' ->
+  g == g' \comp h ->
+  g \comp f == g' \comp f'.
+Proof.
+  move => H1 H2.
+  case: I => lid rid.
+  have: g' \comp (h \comp f) == g' \comp f'.
+  rewrite subst_right_up_to_equals; last first.
+  apply Equivalence.symmetricity.
+  apply: H1.
+  exact: Equivalence.reflexivity.
+  apply: 
+  auto.
+  info_auto.
+  eauto.
+  
+  
+  g \comp 
+  Check (g' \comp h \comp i \comp f').
+  have (g' \comp (h \comp f)) == g' \comp h \comp i \comp f'.
+  have : g \comp i \comp h \comp f == g' \comp h \comp i \comp f'.
+  apply transitivity_lhs.
+  rewrite -comp0m.
+  About identity_morphism_is_right_identity.
+  rewrite -identity_morphism_is_right_identity.
+  rewrite subst_right_up_to_equals; last first.
+  apply Equivalence.symmetricity.
+  apply H1.
+  rewrite subst_left_up_to_equals; last first.
+  apply Equivalence.symmetricity; apply H2.
+  by apply: Equivalence.reflexivity.
+Qed.
 
 Definition solution_of_diagram {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) :=
   sig (fun (s : (forall (A : Ob Ic), Mor (L, F A))) =>
          forall (A B : Ob Ic) (f : Mor (A, B)), ('F f) \comp (s A) == (s B)).
 
-Local Notation "` F " := (proj1_sig F) (at level 1).
+Notation "` F " := (proj1_sig F) (at level 1).
 
 Definition universal_morphism {Ic C : category} {F : Fun (Ic, C)} {L L': Ob C}
            (sL : solution_of_diagram F L) (sL' : solution_of_diagram F L') :=
@@ -158,9 +238,10 @@ Lemma identity_morphism_is_the_unique {C : category} {A : Ob C} (id' : Mor (A, A
   (forall {B : Ob C} (f : Mor (A, B)), (f \comp id') == f) -> id' == id.
 Proof.
 move => H; move: (H _ id).
-rewrite /equals Equivalence.symmetricity => H'.
+rewrite /equals /= Equivalence.symmetricity => H'.
 move:(identity_morphism_is_left_identity id') => def.
-rewrite Equivalence.symmetricity (Equivalence.transitivity H' def) //.
+rewrite Equivalence.symmetricity.
+by apply: Equivalence.transitivity; first by apply: H'.
 Qed.
 
 Definition composition_of_functors {C D E : category} (F : Fun (C, D)) (G : Fun (D, E)) : Fun (C, E).
@@ -189,60 +270,23 @@ Definition universality {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) (lim : li
   | Limit _ u _ => u
   end.
 
-Lemma subst_right_up_to_equals {C : category} (D E F : Ob C) (f f' : Mor (D, E)) (g : Mor (E, F)) (h : Mor (D, F)) :
-  f == f' -> (h == g \comp f) = (h == g \comp f').
-Proof.
-move => H1.
-have : (g \comp f) == (g \comp f')
-by rewrite /equals compatibility_left //.
-rewrite /equals => H3.
-apply/implyP; case: ifP => H2.
- apply/implyP.
- move: H2; rewrite /equals Equivalence.symmetricity => H2.
- rewrite Equivalence.symmetricity (Equivalence.transitivity H3 H2) //.
-move/implyP: H2 => H2 H4; apply H2.
-move: H3; rewrite Equivalence.symmetricity => H3.
-move: H4; rewrite Equivalence.symmetricity => H4.
-rewrite Equivalence.symmetricity (Equivalence.transitivity H3 H4) //.
-Qed.
-
-Lemma subst_left_up_to_equals {C : category} (D E F : Ob C) (f : Mor (D, E)) (g g' : Mor (E, F)) (h : Mor (D, F)) :
-  g == g' -> (h == g \comp f) = (h == g' \comp f).
-Proof.
-move => H1.
-have : (g \comp f) == (g' \comp f)
-by rewrite /equals compatibility_right // Equivalence.symmetricity //.
-rewrite /equals => H3.
-apply/implyP; case: ifP => H2.
- apply/implyP.
- move: H2; rewrite /equals Equivalence.symmetricity => H2.
- rewrite Equivalence.symmetricity (Equivalence.transitivity H3 H2) //.
-move/implyP: H2 => H2 H4; apply H2.
-move: H3; rewrite Equivalence.symmetricity => H3.
-move: H4; rewrite Equivalence.symmetricity => H4.
-rewrite Equivalence.symmetricity (Equivalence.transitivity H3 H4) //.
-Qed.
-
 Lemma associativity_lhs {C : category} (D E F H : Ob C) (f : Mor (D, E)) (g : Mor (E, F)) (h : Mor (F, H)) (i : Mor (D, H)) :
-  h \comp (g \comp f) == i = ((h \comp g) \comp f == i).
+  h \comp (g \comp f) == i <-> ((h \comp g) \comp f == i).
 Proof.
-apply/implyP; case:ifP.
+split.
 rewrite /equals => H1.
-apply/implyP.
-move: (associativity_of_morphisms f g h) => H2.
-move: H2; rewrite Equivalence.symmetricity => H2.
-rewrite (Equivalence.transitivity H2 H1) //.
-move/implyP; rewrite /equals => H1 H2.
-apply H1.
-move: (associativity_of_morphisms f g h) => H3.
-rewrite (Equivalence.transitivity H3 H2) //.
+by apply: Equivalence.transitivity;
+ first apply: associativity_of_morphisms.
+move=> H1.
+by apply: Equivalence.transitivity;
+ first by (apply Equivalence.symmetricity; apply: associativity_of_morphisms).
 Qed.
 
 Lemma associativity_rhs {C : category} (D E F H : Ob C) (f : Mor (D, E)) (g : Mor (E, F)) (h : Mor (F, H)) (i : Mor (D, H)) :
-  i == h \comp (g \comp f) = (i == (h \comp g) \comp f).
+  i == h \comp (g \comp f) <-> (i == (h \comp g) \comp f).
 Proof.
 rewrite /equals Equivalence.symmetricity -/equals.
-rewrite associativity_lhs.
+rewrite associativity_lhs //.
 rewrite /equals Equivalence.symmetricity //.
 Qed.
 
@@ -260,7 +304,7 @@ have: ` (uL L sL) == id.
 apply pL.
 move => A.
 rewrite /equals Equivalence.symmetricity.
-rewrite identity_morphism_is_right_identity //.
+apply: identity_morphism_is_right_identity.
 rewrite /equals Equivalence.symmetricity.
 move => H1 H2.
 rewrite Equivalence.symmetricity.
@@ -280,26 +324,42 @@ move=> limL limL';
 apply Isomorphisms.
 apply (@add_loop _ _ F _ limL').
 move => A B g.
-rewrite associativity_lhs /equals compatibility_right // Equivalence.symmetricity -/equals (proj2_sig (canonical_solution limL')) //.
+apply associativity_lhs, compatibility_right.
+apply Equivalence.symmetricity, (proj2_sig (canonical_solution limL')).
 move => A.
 rewrite associativity_rhs.
 case: limL => sL uL pL;
 have H1 : (` (canonical_solution (Limit pL)) A) == ` (canonical_solution limL') A \comp ` (universality limL' (canonical_solution (Limit pL))).
-rewrite (proj2_sig (universality limL' (canonical_solution (Limit pL))) A) //.
+by apply: (proj2_sig (universality limL' (canonical_solution (Limit pL))) A).
 rewrite -(subst_left_up_to_equals _ _ (proj2_sig (universality limL' (canonical_solution (Limit pL))) A)).
-rewrite (proj2_sig (universality (Limit pL) (canonical_solution limL')) A) //.
+by apply (proj2_sig (universality (Limit pL) (canonical_solution limL')) A).
 
 apply (@add_loop _ _ F _ limL).
 move => A B g.
-rewrite associativity_lhs /equals compatibility_right // Equivalence.symmetricity -/equals (proj2_sig (canonical_solution limL)) //.
+apply associativity_lhs, compatibility_right.
+apply Equivalence.symmetricity, (proj2_sig (canonical_solution limL)).
 move => A.
 rewrite associativity_rhs.
 case: limL' => sL uL pL;
 have H1 : (` (canonical_solution (Limit pL)) A) == ` (canonical_solution limL) A \comp ` (universality limL (canonical_solution (Limit pL))).
-rewrite (proj2_sig (universality limL (canonical_solution (Limit pL))) A) //.
+by apply: (proj2_sig (universality limL (canonical_solution (Limit pL))) A).
 rewrite -(subst_left_up_to_equals _ _ (proj2_sig (universality limL (canonical_solution (Limit pL))) A)).
-rewrite (proj2_sig (universality (Limit pL) (canonical_solution limL)) A) //.
+by apply (proj2_sig (universality (Limit pL) (canonical_solution limL)) A).
 Qed.
+
+Inductive natural_transformation {C D : category} (F : Fun (C, D)) (G : Fun (C, D)) : Type :=
+  NaturalTransformation : forall (n : forall {X : Ob C}, Mor (F(X), G(X))), 
+    (forall (A A' : Ob C) (B B' : Ob D) (f : Mor (A, A')), n \comp 'F(f) == 'G(f) \comp n) ->
+    natural_transformation F G.
+
+Notation "'Nat' ( M , N )" := (natural_transformation M N) (at level 5).
+
+Definition map_of_objects_n {C D : category} {F G : Fun (C, D)} (n : Nat (F, G)) :=
+  match n with
+  | NaturalTransformation n _ => fun x => @n x
+  end.
+Coercion map_of_objects_n : natural_transformation >-> Funclass.
+
 (* TODO: write about natural transformations. *)
 (* TODO: write about adjunctions. *)
 
@@ -368,7 +428,7 @@ refine (@Functor _ _ trivial_embedding0_ob trivial_embedding0_mor _ _ _)
         => //; case => //.
 Defined.
 
-Definition trivial_embedding2_ob (E F : Ob C) (A : Ob cat2) :=
+Definition trivial_embedding2_ob {T : Type} (E F : T) (A : Ob cat2) :=
   match A with
   | Ordinal 0 _ => E
   | Ordinal 1 _ => F
@@ -436,7 +496,7 @@ Definition final_object L := limit trivial_embedding0 L.
 Definition kernel A B (f : Mor(A, B)) L := limit (trivial_embedding2 f) L.
 End Limit.
 
-Local Notation "'Op' C" := (opposite_category C) (at level 1).
+Notation "'Op' C" := (opposite_category C) (at level 1).
 
 Section CoLimit.
 Variable C : category.
@@ -444,4 +504,219 @@ Definition initinal_object L := limit (@trivial_embedding0 (Op C)) L.
 Definition cokernel A B (f : Mor(A, B)) L :=
   limit (@trivial_embedding2 (Op C) _ _ f) L.
 End CoLimit.
+
+Example pushout {C D : category} (F : Fun (C, D)) : category.
+refine (@Category { B : Ob D | exists (A : Ob C), F (A) = B }
+                  (fun A B => Mor (proj1_sig A, proj1_sig B))
+                  (fun A B => @equivMixin D (proj1_sig A) (proj1_sig B))
+                  (fun A B C => @comp D (proj1_sig A) (proj1_sig B) (proj1_sig C))
+                  _ _ _ _ _ _); intros.
+by apply: associativity_of_morphisms.
+by apply: identity_morphism_is_right_identity.
+by apply: identity_morphism_is_left_identity.
+by apply: compatibility_left.
+by apply: compatibility_right.
+Defined.
+
+Inductive natural_isomorphisms
+  {C D : category}
+  {F G : Fun (C, D)}
+  : Nat (F, G) -> Nat (G, F) -> Prop :=
+  NaturalIsomorphisms :
+    forall (n : Nat (F, G)) (m : Nat (G, F)),
+    (forall (X : Ob C), isomorphisms (n X) (m X)) -> 
+    natural_isomorphisms n m.
+
+Variable nat_isom_decidable :
+  forall (C D : category)
+         (F G : Fun (C, D)),
+  decidable (exists (N : Nat (F, G)) (M : Nat (G, F)), natural_isomorphisms N M).
+
+Lemma ni_sym C D (F G : Fun (C, D)) (N : Nat (F, G)) (M : Nat (G, F)) :
+  natural_isomorphisms N M <-> natural_isomorphisms M N.
+Proof.
+  case neq : N => [n ne]; case meq : M => [m me].
+  rewrite -neq -meq; split => H;
+  case: H neq meq => ? ? H neq meq;
+  apply: NaturalIsomorphisms;
+  move: neq meq H => -> -> H X;
+  apply: Isomorphisms;
+  by case: (H X).
+Qed.
+
+Lemma nid_sym C D (F G : Fun (C, D)) :
+  nat_isom_decidable F G <-> nat_isom_decidable G F.
+Proof.
+  split; move/sumboolP => H; apply/sumboolP;
+  case: H => N [M] H; do! apply: ex_intro;
+  rewrite ni_sym; by apply: H.
+Qed.
+
+Definition composition_of_natural_transformations
+           {C D : category}
+           {F G H : Fun (C, D)}
+           (N : Nat (F, G)) (M : Nat (G, H)) : Nat (F, H).
+apply (@NaturalTransformation _ _ _ _ (fun X => M X \comp N X)).
+case: N => [N ne]; case: M => [M me].
+move => A A' B B' f /=.
+apply associativity_lhs.
+
+apply congr_up_to_equals.
+apply associativity_rhs.
+
+apply associativity_lhs.
+apply associativity_lhs.
+apply: Equivalence.transitivity.
+apply Equivalence.symmetricity.
+rewrite -/equals.
+rewrite subst_left_up_to_equals.
+apply: ne.
+rewrite subst_right_up_to_equals.
+apply: me.
+
+move: (me A A' B B' f) => /= H''.
+exact : H''.
+apply H''.
+
+apply associativity_rhs.
+
+
+rewrite subst_left_up_to_equals.
+rewrite subst_right_up_to_equals.
+rewrite subst_right_up_to_equals.
+
+apply: me.
+apply: subst_right_up_to_equals.
+apply: me.
+apply (ne A A' B B' f).
+intros.
+
+apply Equivalence.symmetricity.
+rewrite -ne.
+rewrite ne.
+apply associativity_lhs.
+apply associativity_rhs.
+
+  apply NaturalTransformation .
+refine (NaturalTransformation _).
+refine (Functor (map_of_objects:=fun x => G (F x)) (map_of_morphisms:=fun A B (f : Mor (A, B)) => 'G ('F f)) _ _ _);
+case:F => fo fm fid fcomp fmc /=;
+case:G => go gm gid gcomp gmc /=.
++move=>A.
+ apply: (Equivalence.transitivity _ (gid (fo A))).
+ apply gmc, fid.
++move=>F G H f g.
+ apply: (Equivalence.transitivity _ (gcomp _ _ _ (fm F G f) (fm G H g))).
+ apply gmc, fcomp.
++move=>A B f f' feq.
+ apply gmc, fmc, feq.
+Defined.
+
+Definition natIsomMixin C D : Equivalence.mixin_of (Fun (C, D)).
+   refine (@Equivalence.Mixin _
+                              (@nat_isom_decidable C D)
+                              (@nid_sym C D)
+                              _
+                              _).
+   move => f g h /sumboolP [N1 [M1 H1]] /sumboolP [N2 [M2 H2]].
+   apply/sumboolP; do! apply: ex_intro.
+   move: H1 H2;
+   case n1eq : N1 => [n1 n1e];
+   case n2eq : N2 => [n2 n2e];
+   case m1eq : M1 => [m1 m1e];
+   case m2eq : M2 => [m2 m2e];
+   rewrite -n1eq -m1eq -n2eq -m2eq => H1 H2.
+   case: H1 n1eq m1eq => ? ? H1 n1eq m1eq.
+   case: H2 n2eq m2eq => ? ? H2 n2eq m2eq.
+   move: n1eq m1eq n2eq m2eq H1 H2 => -> -> -> -> H1 H2.
+   About NaturalIsomorphisms .
+   apply: NaturalIsomorphisms => X;
+   apply: Isomorphisms.
+   case: (H1 X); case: (H2 X); intros;
+   do 2 apply: Equivalence.transitivity.
+   apply: n1e.
+   apply: associativity_rhs.
+   apply: transitivity.
+   case.
+   
+   
+   
+   case: (H1 X) => [? ? H1' H1''].
+   case: (H2 X) => [? ? H2' H2''].
+   apply: n1e;
+   apply: m2e;
+   apply: m1e;
+   apply: n2e.
+   
+   apply: H2''.
+   
+   
+   apply: H1'.
+   ; case: (H2 X) => //.
+   intros.
+   move => [].
+   => []. H1 H2.
+   move => H1 H2.
+   apply: 
+  case: H neq meq => ? ? H neq meq;
+   by [].
+   move => f g.
+   split.
+   rewrite /=.
+   by [].
+   Print decidable .
+   rewrite /nat_isom_decidable.
+
+About Equivalence.Mixin.
+  
+Example categories : category.
+refine (@Category category
+                  functor
+                  (fun C D =>
+                     Equivalence.Mixin
+                       _
+                       _ _: Equivalence.mixin_of (Fun (C, D)))
+                  _ _ 
+                  _ _ _ _ _).
+intros.
+
+Definition trivial_embedding2_ob {T : Type} (E F : T) (A : Ob cat2) :=
+  match A with
+  | Ordinal 0 _ => E
+  | Ordinal 1 _ => F
+  | Ordinal _ _ => F (* absurd case *)
+  end.
+
+Example pair (C D : category) : category.
+
+
+refine (@Category (Ob C * Ob D)
+                  (fun (A B : Ob C * Ob D) => (Mor (fst A, fst B) * Mor (snd A, snd B)))
+                  (fun A B => (@equivMixin C (fst A) (fst B), @equivMixin D (snd A) (snd B)))
+                  (fun A B C => (@comp C (fst A) (fst B) (fst C), @comp D (snd A) (snd B) (snd C)))
+                  _ _ _ _ _ _).
+intros; by apply: associativity_of_morphisms.
+intros; by apply: identity_morphism_is_right_identity.
+intros; by apply: identity_morphism_is_left_identity.
+intros; by apply: compatibility_left.
+intros; by apply: compatibility_right.
+Defined.
+
+Inductive adjunction {C D : category} (F : Fun (C, D)) (G : Fun (D, C)) (f : Nat (F, G)) : Type :=
+  Adjunction : forall (A : Ob C)
+                      (B : Ob D)
+                      (f : Hom (A , G(B)) -> Hom (F(A), B)),
+    injective f ->
+    surjective f -> adjunction 
+    
+                      
+    
+  
+Inductive limit {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) : Type :=
+  Limit : forall (sL : solution_of_diagram F L)
+                 (u : (forall (L' : Ob C) (sL' : solution_of_diagram F L'), universal_morphism sL sL')),
+    (forall (L' : Ob C) (sL' : solution_of_diagram F L')
+            (u' :  Mor (L', L)),
+            (forall (A : Ob Ic), (`sL' A) == (`sL A) \comp u') -> ` (u L' sL') == u') -> limit F L.
+  
 End Category.
