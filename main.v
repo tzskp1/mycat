@@ -99,7 +99,7 @@ Section Equiv.
 End Equiv.
 Module Exports.
 Polymorphic Structure category :=
-  Category {
+  Pack {
       objects : _;
       morphisms : _;
       equiv: _;
@@ -111,15 +111,13 @@ Polymorphic Structure category :=
       comp_left : @compatibility_left objects morphisms comp equiv;
       comp_right : @compatibility_right objects morphisms comp equiv;
     }.
+Hint Constructors category.
 Notation "f '\comp' g" := (comp f g) (at level 40).
 Notation "f == g" := (Equivalence.op (equiv _ _) f g).
 Notation "'Ob' C" := (objects C) (at level 1).
 Notation "'Mor' ( M , N )" := (morphisms M N) (at level 5).
 Arguments id [c A].
-End Exports.
-End Axioms.
-Export Axioms.Exports.
-  
+
 Structure functor (domain codomain : category) :=
   Functor {
       map_of_objects :> Ob domain -> Ob codomain;
@@ -134,17 +132,19 @@ Structure functor (domain codomain : category) :=
     }.
 Notation "'Fun' ( C , D )" := (functor C D).
 Notation "' F " := (map_of_morphisms F) (at level 1).
+End Exports.
+End Axioms.
+Export Axioms.Exports.
 
 Inductive isomorphisms {C : category} {A B : Ob C} (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
   Isomorphisms : (g \comp f) == id -> (f \comp g) == id -> isomorphisms f g.
 
 Hint Resolve (proj1 (Equivalence.symmetricity _ _ _)) Equivalence.reflexivity.
-Polymorphic Hint Resolve right_idem left_idem.
+Hint Constructors category.
+(* Polymorphic Hint Constructors category. *)
 
 Lemma comp0m C (D E : Ob C) (f : Mor (D, E)) : f == id \comp f.
-Proof.
-  info_auto.
-    by apply Equivalence.symmetricity, identity_morphism_is_left_identity. Qed.
+Proof. by apply left_idem. Qed.
 
 Lemma compm0 C (D E : Ob C) (f : Mor (D, E)) : f == f \comp id.
 Proof. by apply Equivalence.symmetricity, identity_morphism_is_right_identity. Qed.

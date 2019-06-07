@@ -1,0 +1,4 @@
+-arg "-w -notation-overridden"
+equivalence.v
+main.v
+-R . mycat
