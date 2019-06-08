@@ -1,102 +1,37 @@
 From mathcomp Require Import all_ssreflect.
+Require Import equivalence.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Module Equivalence.
-Structure mixin_of T :=
-  Mixin {
-      op : T -> T -> Prop;
-      symmetricity : forall (f g : T), op f g <-> op g f;
-      transitivity : forall (f g h : T), op f g -> op g h -> op f h;
-      reflexivity : forall (f : T), op f f;
-    }.
-
-Definition eqTypeMixin (T : eqType) : mixin_of T.
-  refine (@Mixin T
-         eq_op
-         _
-         (fun (f g h : T) (V : f == g) => eq_ind_r (fun x : T => g == h -> x == h) (fun x : g == h => x) (elimTF eqP V))
-         (@eqxx T)).
-  intros; by rewrite eq_sym.
-Defined.
-
-Definition trivialMixin T : mixin_of T :=
-  @Mixin _ (fun _ _ => true) (fun _ _ => conj id id) (fun _ _ _ _ x => x) (fun _ => eqxx true).
-Definition falseMixin : mixin_of false := trivialMixin false.
-Definition unitMixin : mixin_of unit := trivialMixin unit.
-Definition trueMixin : mixin_of true := trivialMixin true.
-Definition eq_and {x y} {z w} (H:@eq _ x y) (H':@eq _ z w) :=
-  match H in @eq _ _ a return @eq _ (x && z) (a && w) with
-  | @Logic.eq_refl =>
-    match H' in @eq _ _ b return @eq _ (x && z) (x && b) with
-    | @Logic.eq_refl => @Logic.eq_refl _ (x && z)
-    end
-  end.
-Definition prodMixin s e (Ms : mixin_of s) (Me : mixin_of e) : mixin_of (s * e).
-refine (@Mixin (s * e)
-               (fun s' e' : s * e =>
-                  let (s1, e1) := s' in
-                  let (s2, e2) := e' in
-                  op Ms s1 s2 /\ op Me e1 e2)
-               _ _ _).
-case => [s1 e1] [s2 e2].
-by move: (symmetricity Ms s1 s2) (symmetricity Me e1 e2) => -> ->.
-case => [s1 e1] [s2 e2] [s3 e3].
-case => Hs12 He12.
-case => Hs23 He23.
-split.
-apply (@transitivity _ Ms _ _ _ Hs12 Hs23).
-apply (@transitivity _ Me _ _ _ He12 He23).
-case => [s1 e1].
-split;
-  first exact: reflexivity Ms s1.
-exact: reflexivity Me e1.
-Defined.
-Definition natMixin s : mixin_of (ordinal s).
-refine (@Mixin _
-               (fun a b =>
-                  match a, b with
-                  | Ordinal a' _, Ordinal b' _ => a' == b'
-                  end)
-               _ _ _) => //=.
-case => [? ?] [? ?].
-rewrite eq_sym //.
-case => [? ?] [? ?] [? ?].
-move/eqP => -> //.
-case => [? ?] //.
-Defined.
-End Equivalence.
-
+Module Category.
 (* locally small category *)
-Module Axioms.
-Section Equiv.
- Import Equivalence.
- Variable objects : Type.
- Variable morphisms : objects -> objects -> Type.
- Variable id : forall (A : objects), morphisms A A.
- Variable comp : forall {A B C : objects}, morphisms B C -> morphisms A B -> morphisms A C.
- Variable cmp: forall (A B : objects), mixin_of (morphisms A B).
- Local Notation "f '\comp' g" := (comp f g) (at level 40).
- Local Notation "f == g" := (op (cmp _ _) f g).
- Local Definition associativity_of_morphisms :=
-   forall D E F G
-          (h : morphisms D E)
-          (i : morphisms E F)
-          (j : morphisms F G),
-   (j \comp i) \comp h == j \comp (i \comp h).
- Local Definition identity_morphism_is_right_identity :=
-   forall A B (f : morphisms A B), f == f \comp id A.
- Local Definition identity_morphism_is_left_identity :=
-   forall A B (f : morphisms A B), f == id B \comp f.
- Local Definition compatibility_left :=
-   forall D E F (f f': morphisms D E) (g : morphisms E F),
-   f == f' -> g \comp f == g \comp f'.
- Local Definition compatibility_right :=
-   forall D E F (f : morphisms D E) (g g' : morphisms E F),
-   g == g' -> g \comp f == g' \comp f.
-End Equiv.
+Section Axioms.
+Variable objects : Type.
+Variable morphisms : objects -> objects -> Type.
+Variable id : forall A, morphisms A A.
+Variable comp : forall {A B C}, morphisms B C -> morphisms A B -> morphisms A C.
+Variable cmp : forall {A B}, Equivalence.mixin_of (morphisms A B).
+Local Notation "f '\comp' g" := (comp f g) (at level 40).
+Local Notation "f == g" := (@equiv_op (EquivType _ (cmp _ _)) f g).
+Local Definition associativity_of_morphisms :=
+  forall D E F G
+         (h : morphisms D E)
+         (i : morphisms E F)
+         (j : morphisms F G),
+  (j \comp i) \comp h == j \comp (i \comp h).
+Local Definition identity_morphism_is_right_identity :=
+  forall A B (f : morphisms A B), f == f \comp id A.
+Local Definition identity_morphism_is_left_identity :=
+  forall A B (f : morphisms A B), f == id B \comp f.
+Local Definition compatibility_left :=
+  forall D E F (f f': morphisms D E) (g : morphisms E F),
+  f == f' -> g \comp f == g \comp f'.
+Local Definition compatibility_right :=
+  forall D E F (f : morphisms D E) (g g' : morphisms E F),
+  g == g' -> g \comp f == g' \comp f.
+End Axioms.
 Module Exports.
 Polymorphic Structure category :=
   Pack {
@@ -111,44 +46,71 @@ Polymorphic Structure category :=
       comp_left : @compatibility_left objects morphisms comp equiv;
       comp_right : @compatibility_right objects morphisms comp equiv;
     }.
-Hint Constructors category.
+Arguments id {c A}.
+Arguments comp {c A B C} _ _.
 Notation "f '\comp' g" := (comp f g) (at level 40).
-Notation "f == g" := (Equivalence.op (equiv _ _) f g).
 Notation "'Ob' C" := (objects C) (at level 1).
 Notation "'Mor' ( M , N )" := (morphisms M N) (at level 5).
-Arguments id [c A].
-
-Structure functor (domain codomain : category) :=
-  Functor {
-      map_of_objects :> Ob domain -> Ob codomain;
-      map_of_morphisms : forall (A B : Ob domain), Mor (A, B) -> Mor (map_of_objects A, map_of_objects B);
-      _ : forall (A : Ob domain),
-          (@map_of_morphisms A A id) == id;
-      _ : forall (A B C : Ob domain) (f : Mor (A, B)) (g : Mor (B, C)),
-          (map_of_morphisms (g \comp f)) == (map_of_morphisms g \comp (map_of_morphisms f));
-      _ : forall (A B : Ob domain) (f f' : Mor (A, B)),
-          f == f' ->
-          (map_of_morphisms f) == (map_of_morphisms f');
-    }.
-Notation "'Fun' ( C , D )" := (functor C D).
-Notation "' F " := (map_of_morphisms F) (at level 1).
 End Exports.
-End Axioms.
-Export Axioms.Exports.
+End Category.
+Export Category.Exports.
 
-Inductive isomorphisms {C : category} {A B : Ob C} (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
+Local Notation "f == g" := (@equiv_op (EquivType _ (equiv _ _)) f g).
+Inductive isomorphisms {C} {A B: Ob C} (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
   Isomorphisms : (g \comp f) == id -> (f \comp g) == id -> isomorphisms f g.
-
-Hint Resolve (proj1 (Equivalence.symmetricity _ _ _)) Equivalence.reflexivity.
-Hint Constructors category.
-(* Polymorphic Hint Constructors category. *)
 
 Lemma comp0m C (D E : Ob C) (f : Mor (D, E)) : f == id \comp f.
 Proof. by apply left_idem. Qed.
 
 Lemma compm0 C (D E : Ob C) (f : Mor (D, E)) : f == f \comp id.
-Proof. by apply Equivalence.symmetricity, identity_morphism_is_right_identity. Qed.
+Proof. by apply right_idem. Qed.
 
+Lemma comp_comp c (A B C : Ob c) : @Congruence.compatible
+                                     (EquivType _ (equiv B C))
+                                     (EquivType _ (equiv A B))
+                                     (EquivType _ (equiv A C))
+                                     comp.
+Proof.
+  move => f g h i H1 H2.
+  apply: Equivalence.trans;
+    first by apply comp_left, H2.
+  by apply comp_right, H1.
+Qed.
+  
+Hint Resolve comp0m compm0.
+
+Module Functor.
+Section Axioms.
+Variables domain codomain : category.
+Variable map_of_objects : Ob domain -> Ob codomain.
+Variable map_of_morphisms : forall A B,
+    Mor (A, B) -> Mor (map_of_objects A, map_of_objects B).
+Local Definition maps_identity_to_identity :=
+  forall A, @map_of_morphisms A A id == id.
+Local Definition preserve_composition :=
+  forall A B C (f : Mor (A, B)) (g : Mor (B, C)),
+    map_of_morphisms (g \comp f) == map_of_morphisms g \comp (map_of_morphisms f).
+Local Definition preserve_equivalence :=
+  forall A B (f f' : Mor (A, B)),
+    f == f' -> map_of_morphisms f == map_of_morphisms f'.
+End Axioms.
+Module Exports.
+Structure functor :=
+  Pack {
+      Dom : _;
+      Cod : _;
+      map_of_objects :> Ob Dom -> Ob Cod;
+      map_of_morphisms : forall A B,
+          Mor (A, B) -> Mor (map_of_objects A, map_of_objects B);
+      id_id : @maps_identity_to_identity Dom Cod map_of_objects map_of_morphisms;
+      pres_comp : @preserve_composition Dom Cod map_of_objects map_of_morphisms;
+      pres_equiv : @preserve_equivalence Dom Cod map_of_objects map_of_morphisms;
+    }.
+Notation "'Fun' ( C , D )" := (functor C D).
+Notation "' F " := (map_of_morphisms F) (at level 1).
+End Exports.
+End Functor.
+Export Functor.Exports.
 
 Lemma subst_right_up_to_equals {C : category} (D E F : Ob C) (f f' : Mor (D, E)) (g : Mor (E, F)) (h : Mor (D, F)) :
   f == f' -> (h == g \comp f) <-> (h == g \comp f').
