@@ -37,8 +37,8 @@ Polymorphic Structure mixin_of objects :=
       id: _;
       compm: _;
       associativity : @associativity_of_morphisms objects morphisms compm;
-      right_idem : @identity_morphism_is_right_identity objects morphisms id compm;
-      left_idem : @identity_morphism_is_left_identity objects morphisms id compm;
+      compm0 : @identity_morphism_is_right_identity objects morphisms id compm;
+      comp0m : @identity_morphism_is_left_identity objects morphisms id compm;
       comp_left : @compatibility_left objects morphisms compm;
       comp_right : @compatibility_right objects morphisms compm;
     }.
@@ -66,8 +66,8 @@ Notation id := (@Category.id _ (class _) _).
 Notation morphisms := morphisms.
 Notation compm := compm.
 Notation compmA := associativity.
-Notation right_idem := right_idem.
-Notation left_idem := left_idem.
+Notation compm0 := compm0.
+Notation comp0m := comp0m.
 Notation comp_left := comp_left.
 Notation comp_right := comp_right.
 Arguments compm {objects m A B C} _ _.
@@ -85,11 +85,6 @@ End Category.
 Export Category.Exports.
 
 Local Notation "f == g" := (@equiv_op (@morphisms _ _ _ _) f g).
-Lemma comp0m C (D E : Ob C) (f : Mor (D, E)) : f == id \compm f.
-Proof. by apply left_idem. Qed.
-
-Lemma compm0 C (D E : Ob C) (f : Mor (D, E)) : f == f \compm id.
-Proof. by apply right_idem. Qed.
 
 Lemma compm_comp c (A B C : Ob c) : @Congruence.compatible
                                       (Mor (B, C))
@@ -104,8 +99,6 @@ Proof.
 Qed.
 Local Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
 Local Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
-
-Hint Resolve comp0m compm0.
 
 Module Functor.
 Section Axioms.
@@ -238,8 +231,8 @@ Lemma idn_map_naturality : naturality_axiom idn_map.
 Proof.
   rewrite /idn_map => ? ? ?.
   apply: Congruence.etrans;
-    last by apply: right_idem.
-  apply/symP; apply left_idem.
+    last by apply: compm0.
+  apply/symP; apply comp0m.
 Defined.
 Definition identity_natural_transformation :=
   @NaturalTransformation _ _ _ _ idn_map idn_map_naturality.
@@ -308,7 +301,7 @@ Lemma ni_refl C D (F : Fun (C, D)) :
 Proof.
   apply: NaturalIsomorphisms => X.
   apply: Isomorphisms => /=;
-  apply/symP; by apply left_idem.
+  apply/symP; by apply comp0m.
 Defined.
 
 Lemma ni_trans C D (F G H : Fun (C, D))
@@ -331,7 +324,7 @@ Proof.
     first (by apply/symP; apply HX));
   apply: subst_right;
   (apply: Congruence.etrans; last (by apply: compmA));
-  (apply: Congruence.etrans; first (by apply: left_idem));
+  (apply: Congruence.etrans; first (by apply: comp0m));
   apply: subst_left; by apply/symP.
 Defined.
 
@@ -383,7 +376,7 @@ Proof.
   apply/symP; by apply: comp0m.
 Defined.
 
-Lemma cats_right_idem : @Category.identity_morphism_is_right_identity category _ idf composition_of_functors.
+Lemma cats_compm0 : @Category.identity_morphism_is_right_identity category _ idf composition_of_functors.
 Proof.
   move => /= C D f.
   do !apply: ex_intro.
@@ -394,7 +387,7 @@ Proof.
   apply/symP; by apply: comp0m.
 Defined.
 
-Lemma cats_left_idem : @Category.identity_morphism_is_left_identity category _ idf composition_of_functors.
+Lemma cats_comp0m : @Category.identity_morphism_is_left_identity category _ idf composition_of_functors.
 Proof.
   move => /= C D f.
   do !apply: ex_intro.
@@ -434,7 +427,7 @@ Proof.
   by case: (H (f X)).
 Defined.
 
-Definition cats_catMixin := CatMixin cats_associativity cats_right_idem cats_left_idem cats_comp_left cats_comp_right.
+Definition cats_catMixin := CatMixin cats_associativity cats_compm0 cats_comp0m cats_comp_left cats_comp_right.
 Canonical cats_catType := Eval hnf in CatType category cats_catMixin.
 Notation cats := cats_catType.
 End CategoryOfCategories.
