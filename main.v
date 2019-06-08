@@ -433,19 +433,47 @@ Notation cats := cats_catType.
 End CategoryOfCategories.
 
 Section Pushout.
-Example pushout {C D : category} (F : Fun (C, D)) : category.
-refine (@Category { B : Ob D | exists (A : Ob C), F (A) = B }
-                  (fun A B => Mor (proj1_sig A, proj1_sig B))
-                  (fun A B => @equivMixin D (proj1_sig A) (proj1_sig B))
-                  (fun A B C => @comp D (proj1_sig A) (proj1_sig B) (proj1_sig C))
-                  _ _ _ _ _ _); intros.
-by apply: associativity_of_morphisms.
-by apply: identity_morphism_is_right_identity.
-by apply: identity_morphism_is_left_identity.
-by apply: compatibility_left.
-by apply: compatibility_right.
+Variables C D : category.
+Variable F : Fun (C, D).
+Notation FC := { B | exists A, F A = B }.
+Definition compF (A B C : FC) := 
+  @compm _ (Category.class D) (proj1_sig A) (proj1_sig B) (proj1_sig C).
+
+Lemma FC_associativity : @Category.associativity_of_morphisms FC _ compF.
+Proof.
+  move => [??] [??] [??] [??] /= h i j.
+  apply compmA.
 Defined.
+
+Lemma FC_compm0 : @Category.identity_morphism_is_right_identity FC _ (fun A => @Category.id _ _ (proj1_sig A)) compF.
+Proof.
+  move => [??] [??] /= f.
+  apply compm0.
+Defined.
+
+Lemma FC_comp0m : @Category.identity_morphism_is_left_identity FC _ (fun A => @Category.id _ _ (proj1_sig A)) compF.
+Proof.
+  move => [??] [??] /= f.
+  apply comp0m.
+Defined.
+
+Lemma FC_comp_left : @Category.compatibility_left FC _ compF.
+Proof.
+  move => [??] [??] [??] /= f f' g.
+  apply comp_left.
+Defined.
+
+Lemma FC_comp_right : @Category.compatibility_right FC _ compF.
+Proof.
+  move => [??] [??] [??] /= f g g'.
+  apply comp_right.
+Defined.
+
+Notation FC_catMixin := (CatMixin FC_associativity FC_compm0 FC_comp0m FC_comp_left FC_comp_right).
+Definition FC_catType := Eval hnf in CatType FC FC_catMixin.
 End Pushout.
+Notation pushout := FC_catType.
+Print FC_catType.
 
 (* TODO: write about natural transformations. *)
 (* TODO: write about adjunctions. *)
