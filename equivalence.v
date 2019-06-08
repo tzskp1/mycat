@@ -7,7 +7,7 @@ Unset Printing Implicit Defensive.
 Module Equivalence.
 
 Section Axioms.
-Variables (T : Type) (op : rel T).
+Variables (T : Type) (op : T -> T -> Prop).
 Definition symmetricity := forall f g, op f g <-> op g f.
 Definition transitivity := forall f g h, op f g -> op g h -> op f h.
 Definition reflexivity := forall f, op f f.
@@ -46,7 +46,6 @@ Notation "[ 'equivType' 'of' T 'for' C ]" := (@clone T C _ idfun id)
   (at level 0, format "[ 'equivType'  'of'  T  'for'  C ]") : form_scope.
 Notation "[ 'equivType' 'of' T ]" := (@clone T _ _ id id)
   (at level 0, format "[ 'equivType'  'of'  T ]") : form_scope.
-Hint Resolve sym refl.
 End Exports.
 
 End Equivalence.
@@ -75,62 +74,30 @@ Arguments reflP [T f].
 Prenex Implicits equiv_op symP transP reflP.
 
 Module Congruence.
-Section Fundamental.
-Variables (e : equivType)
-          (lhs rhs : e)
-          (eq : lhs == rhs).
-
-Lemma etrans t :
-  lhs == t <-> t == rhs.
-Proof.
-  split => H.
-   by apply: Equivalence.trans;
-    first by apply Equivalence.sym, H.
-  by apply: Equivalence.trans;
-   last by apply Equivalence.sym, H.
-Qed.
-End Fundamental.
-(* Section Associativity. *)
-(* Variables e1 e12 e2 e23 e3 e13 : equivType. *)
-(* Variable F : forall (e1 e2 e3: equivType), e1 -> e2 -> e3. *)
-(* Arguments F {e1 e2 e3}. *)
-(* Variables (f : e1) (g : e2) (h : e3) (i : e13). *)
-
-(* Definition associativity := *)
-(*  (F f (F g h : e23) : e13) == (F (F f g : e12) h : e13). *)
-
-(* Local Axiom assoc : associativity. *)
-
-(* Lemma assoc_lhs : *)
-(*   F f (F g h : e23) == i <-> F (F f g : e12) h == i. *)
-(* Proof. *)
-(*   split => ?. *)
-(*    by apply: Equivalence.trans; *)
-(*     first by apply Equivalence.sym, assoc. *)
-(*   by apply: Equivalence.trans; *)
-(*    first by apply assoc. *)
-(* Qed. *)
-
-(* Lemma assoc_rhs : *)
-(*   i == F f (F g h : e23) <-> i == F (F f g : e12) h. *)
-(* Proof. *)
-(*   split => ?. *)
-(*    by apply: Equivalence.trans; *)
-(*     last by apply assoc. *)
-(*   by apply: Equivalence.trans; *)
-(*    last by apply Equivalence.sym, assoc. *)
-(* Qed. *)
-(* End Associativity. *)
-
+Lemma etrans (e : equivType) (x y z : e) : x == y -> y == z -> x == z.
+Proof. by move=> ?; apply: Equivalence.trans. Defined.
 Section Compatibility.
 Variables e1 e2 e3 : equivType.
 Variable F : e1 -> e2 -> e3.
 Definition compatible := forall f f' g g',
   f == f' -> g == g' -> F f g == F f' g'.
-Local Axiom comp_op : compatible.
+Variable comp_op : compatible.
+Lemma subst_left f f' g :
+  f == f' -> F f g == F f' g.
+Proof.
+  move => ?; apply: comp_op => //; apply reflP.
+Qed. 
+Lemma subst_right f g g' :
+  g == g' -> F f g == F f g'.
+Proof.
+  move => ?; apply: comp_op => //; apply reflP.
+Qed. 
 (* TODO: somthing *)
 End Compatibility.
 Arguments compatible {e1 e2 e3} _.
+Arguments etrans {e x y z} _ _.
+Arguments subst_right {e1 e2 e3 F} comp_op {_ _ _}.
+Arguments subst_left {e1 e2 e3 F} comp_op {_ _ _}.
 End Congruence.
 
 Section EquivEq.
