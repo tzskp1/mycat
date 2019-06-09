@@ -115,3 +115,15 @@ Definition eq_equivMixin := EquivMixin eq_symP eq_transP eq_reflP.
 Definition eq_equivType := EquivType (Equality.sort T) eq_equivMixin.
 End EquivEq.
 Canonical nat_equivType := Eval compute in eq_equivType nat_eqType.
+Canonical bool_equivType := Eval compute in eq_equivType bool_eqType.
+Canonical ordinal_equivType n := Eval compute in eq_equivType (ordinal_eqType n).
+Lemma prop_symP : @Equivalence.symmetricity Prop iff.
+Proof. move => ??; split; by move => ->. Qed.
+
+Lemma prop_transP : @Equivalence.transitivity Prop iff.
+Proof. move=> ? ? ? [] ? ? [] ? ?. split; by auto. Qed.
+
+Lemma prop_reflP : @Equivalence.reflexivity Prop iff.
+Proof. by []. Qed.
+Canonical prop_equivMixin := EquivMixin prop_symP prop_transP prop_reflP.
+Canonical prop_equivType := EquivType Prop prop_equivMixin.

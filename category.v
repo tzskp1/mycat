@@ -4,6 +4,8 @@ Require Import equivalence.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+(* Set Printing Universes. *)
+Set Universe Polymorphism.
 
 Module Category.
 (* locally small category *)
@@ -31,7 +33,7 @@ Local Definition compatibility_right :=
   forall D E F (f : morphisms D E) (g g' : morphisms E F),
   g == g' -> g \comp f == g' \comp f.
 End Axioms.
-Polymorphic Structure mixin_of objects :=
+Structure mixin_of objects :=
   Mixin {
       morphisms : _;
       id: _;
@@ -46,7 +48,7 @@ Polymorphic Structure mixin_of objects :=
 Local Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Polymorphic Structure type := Pack {sort; _ : class_of sort; _ : Type}.
+Structure type := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
 Variables (T : Type) (cT : type).
 
@@ -99,6 +101,14 @@ Proof.
 Qed.
 Local Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
 Local Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
+
+Lemma identity_morphism_is_the_unique C (A : Ob C) (id' : Mor (A, A)) :
+  (forall {B : Ob C} (f : Mor (A, B)), (f \compm id') == f) -> id' == id.
+Proof.
+move => H.
+apply: Congruence.etrans; last by apply H.
+apply comp0m.
+Qed.
 
 Module Functor.
 Section Axioms.
@@ -162,17 +172,12 @@ End Composition.
 Notation "F \compf G" := (composition_of_functors F G) (at level 40).
 Section Identity.
 Variables C : category.
-Definition idfo := @id C.
 Definition idfm (A B : Ob C) (f : Mor (A, B)) := f.
-Lemma idf_id_id : @maps_identity_to_identity _ _ idfo idfm.
-Proof. rewrite /= /idfm => ?. by apply/reflP. Defined.
-Lemma idf_pres_comp : @preserve_composition _ _ idfo idfm.
-Proof. rewrite /= /idfm => ?????. by apply/reflP. Defined.
-Lemma idf_pres_equiv : @preserve_equivalence _ _ idfo idfm.
-Proof. by rewrite /= /idfm => ?????. Defined.
+Definition idf_id_id := (fun _  => reflP) : maps_identity_to_identity idfm.
+Definition idf_pres_comp := (fun _ _ _ _ _ => reflP) : preserve_composition idfm.
+Definition idf_pres_equiv := (fun _ _ _ _ => ssrfun.id) : preserve_equivalence idfm.
 Definition identity_of_functor :=
-  @Functor _ _
-          idfo
+  @Functor _ _ _
           idfm
           idf_id_id
           idf_pres_comp
@@ -202,7 +207,7 @@ Notation "'Nat' ( M , N )" := (natural_transformation M N) (at level 5).
 Section Composition.
 Variables C D : category.
 Variables F G H : Fun (C, D).
-Variables (N : Nat (F, G)) (M : Nat (G, H)).
+Variables (M : Nat (G, H)) (N : Nat (F, G)).
 Definition compn_map X := M X \compm N X.
 Lemma compn_naturality : naturality_axiom compn_map.
 Proof.
@@ -226,14 +231,11 @@ Notation "N \compn M" := (composition_of_natural_transformations N M)  (at level
 Section Identity.
 Variables C D : category.
 Variable F : Fun (C, D).
-Definition idn_map X := @Category.id D (Category.class D) (F X).
-Lemma idn_map_naturality : naturality_axiom idn_map.
-Proof.
-  rewrite /idn_map => ? ? ?.
-  apply: Congruence.etrans;
-    last by apply: compm0.
-  apply/symP; apply comp0m.
-Defined.
+Definition idn_map X := @Category.id _ (Category.class D) (F X).
+Definition idn_map_naturality :=
+  (fun (A A' : Ob C) (f : Mor (A, A')) =>
+     Congruence.etrans ([eta iffRL symP] (comp0m (' F f))) (compm0 (' F f)))
+  : naturality_axiom idn_map.
 Definition identity_natural_transformation :=
   @NaturalTransformation _ _ _ _ idn_map idn_map_naturality.
 End Identity.
@@ -278,9 +280,16 @@ End Exports.
 End NaturalTransformation.
 Export NaturalTransformation.Exports.
 
-Section Isormophism.
+Module Isomorphism.
 Inductive isomorphisms {C} {A B: Ob C} (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
   Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
+
+Inductive natural_isomorphisms
+          {C D} {F G : Fun (C, D)}
+          (N : Nat (F, G)) (M : Nat (G, F)) : Prop :=
+  NaturalIsomorphisms :
+    (forall (X : Ob C), isomorphisms (N X) (M X)) -> 
+    natural_isomorphisms N M.
 
 Section LocalArg.
 Variable C : category.
@@ -322,15 +331,7 @@ Proof.
 Defined.
 End LocalArg.
 
-Notation iti_equivMixin := (EquivMixin (@iti_sym _) (@iti_trans _) (@iti_refl _)).
-Polymorphic Canonical iti_equivType C := Eval hnf in EquivType (Ob C) iti_equivMixin.
-
-Inductive natural_isomorphisms
-          {C D} {F G : Fun (C, D)}
-          (N : Nat (F, G)) (M : Nat (G, F)) : Prop :=
-  NaturalIsomorphisms :
-    (forall (X : Ob C), isomorphisms (N X) (M X)) -> 
-    natural_isomorphisms N M.
+Notation iti_equivMixin C := (EquivMixin (@iti_sym C) (@iti_trans C) (@iti_refl C)).
 
 Lemma ni_sym C D (F G : Fun (C, D)) (N : Nat (F, G)) (M : Nat (G, F)) :
   natural_isomorphisms N M <-> natural_isomorphisms M N.
@@ -353,7 +354,7 @@ Lemma ni_trans C D (F G H : Fun (C, D))
       (N2 : Nat (G, H)) (M2 : Nat (H, G)) :
   natural_isomorphisms N1 M1
   -> natural_isomorphisms N2 M2
-  -> natural_isomorphisms (N1 \compn N2) (M2 \compn M1).
+  -> natural_isomorphisms (N2 \compn N1) (M1 \compn M2).
 Proof.
   move=> [H1] [H2].
   apply: NaturalIsomorphisms => X.
@@ -403,11 +404,51 @@ Proof.
   apply ni_trans; first (by apply H1);
   by apply H2.
 Defined.
-
-Definition itn_equivMixin := EquivMixin itn_sym itn_trans itn_refl.
-Canonical itn_equivType := Eval hnf in EquivType (Fun (C, D)) itn_equivMixin.
 End LocalArg.
-End Isormophism.
+
+Notation itn_equivMixin C D := (EquivMixin (@itn_sym C D) (@itn_trans C D) (@itn_refl C D)).
+
+Section LocalArg.
+Variables C D : category.
+Variables F G : Fun (C, D).
+Local Notation eqn :=
+  (fun (N : Nat (F, G)) (M : Nat (F, G))
+   =>  forall X, N X == M X).
+Lemma eqn_sym :
+  Equivalence.symmetricity eqn.
+Proof.
+  move => ? ?.
+  split => ? ?; by apply/symP.
+Defined.
+
+Lemma eqn_refl :
+  Equivalence.reflexivity eqn.
+Proof.
+  move => ? ?.
+  by apply/reflP.
+Defined.
+
+Lemma eqn_trans :
+  Equivalence.transitivity eqn.
+Proof.
+  move => ? ? ? H ? ?.
+  by (apply/transP; first by apply: H).
+Defined.
+End LocalArg.
+
+Notation eqn_equivMixin C D F G := (EquivMixin (@eqn_sym C D F G) (@eqn_trans C D F G) (@eqn_refl C D F G)).
+
+Module Exports.
+Notation isomorphisms := isomorphisms.
+Notation Isomorphisms := Isomorphisms.
+Notation natural_isomorphisms := natural_isomorphisms.
+Notation NaturalIsomorphisms := NaturalIsomorphisms.
+Canonical funs_equivType C D := Eval hnf in EquivType (Fun (C, D)) (itn_equivMixin C D).
+Canonical obs_equivType C := Eval hnf in EquivType (Ob C) (iti_equivMixin C).
+Canonical nats_equivType C D F G := Eval hnf in EquivType (Nat (F, G)) (eqn_equivMixin C D F G).
+End Exports.
+End Isomorphism.
+Export Isomorphism.Exports.
 
 Section CategoryOfCategories.
 Lemma cats_associativity : @Category.associativity_of_morphisms category _ composition_of_functors.
@@ -472,8 +513,8 @@ Proof.
   by case: (H (f X)).
 Defined.
 
-Polymorphic Definition cats_catMixin := CatMixin cats_associativity cats_compm0 cats_comp0m cats_comp_left cats_comp_right.
-Polymorphic Canonical cats_catType := Eval hnf in CatType category cats_catMixin.
+Notation cats_catMixin := (CatMixin cats_associativity cats_compm0 cats_comp0m cats_comp_left cats_comp_right).
+Canonical cats_catType := Eval hnf in CatType category cats_catMixin.
 End CategoryOfCategories.
 Notation cats := cats_catType.
 
@@ -515,7 +556,7 @@ Proof.
 Defined.
 
 Notation FC_catMixin := (CatMixin FC_associativity FC_compm0 FC_comp0m FC_comp_left FC_comp_right).
-Definition FC_catType := Eval hnf in CatType FC FC_catMixin.
+Canonical FC_catType := Eval hnf in CatType FC FC_catMixin.
 End Pushout.
 Notation pushout := FC_catType.
 
@@ -560,263 +601,270 @@ End Opposite.
 Notation opposite_category := op_catType.
 Notation "'Op' C" := (opposite_category C) (at level 1).
 
-(* TODO: write about natural transformations. *)
-(* TODO: write about adjunctions. *)
+Section CategoryOfFunctors.
+Variable C D : category.
+Lemma funs_associativity : Category.associativity_of_morphisms (@composition_of_natural_transformations C D).
+Proof.
+  move => C' D' E F h i j X /=.
+  apply compmA.
+Defined.
 
-(* Definition solution_of_diagram {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) := *)
-(*   sig (fun (s : (forall (A : Ob Ic), Mor (L, F A))) => *)
-(*          forall (A B : Ob Ic) (f : Mor (A, B)), ('F f) \comp (s A) == (s B)). *)
+Lemma funs_compm0 : Category.identity_morphism_is_right_identity (@idn C D) (@composition_of_natural_transformations C D).
+Proof.
+  move => C' D' f X.
+  apply compm0.
+Defined.
 
-(* Notation "` F " := (proj1_sig F) (at level 1). *)
+Lemma funs_comp0m : Category.identity_morphism_is_left_identity (@idn C D) (@composition_of_natural_transformations C D).
+Proof.
+  move => C' D' f X.
+  apply comp0m.
+Defined.
 
-(* Definition universal_morphism {Ic C : category} {F : Fun (Ic, C)} {L L': Ob C} *)
-(*            (sL : solution_of_diagram F L) (sL' : solution_of_diagram F L') := *)
-(*     sig (fun (l : Mor (L', L)) => forall (A : Ob Ic), (`sL' A) == (`sL A) \comp l). *)
+Lemma funs_comp_left : Category.compatibility_left (@composition_of_natural_transformations C D).
+Proof.
+  move => ? ? ? f f' g /= H X.
+  apply comp_left.
+  move: f f' H => [f ?] [f' ?] /= H.
+  apply H.
+Defined.
 
-(* Inductive limit {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) : Type := *)
-(*   Limit : forall (sL : solution_of_diagram F L) *)
-(*                  (u : (forall (L' : Ob C) (sL' : solution_of_diagram F L'), universal_morphism sL sL')), *)
-(*     (forall (L' : Ob C) (sL' : solution_of_diagram F L') *)
-(*             (u' :  Mor (L', L)), *)
-(*             (forall (A : Ob Ic), (`sL' A) == (`sL A) \comp u') -> ` (u L' sL') == u') -> limit F L. *)
+Lemma funs_comp_right : Category.compatibility_right (@composition_of_natural_transformations C D).
+Proof.
+  move => ? ? ? f f' g /= H X.
+  apply comp_right.
+  move: f f' H => [f ?] [f' ?] /= H.
+  apply H.
+Defined.
 
-(* Lemma identity_morphism_is_the_unique {C : category} {A : Ob C} (id' : Mor (A, A)) : *)
-(*   (forall {B : Ob C} (f : Mor (A, B)), (f \comp id') == f) -> id' == id. *)
-(* Proof. *)
-(* move => H; move: (H _ id). *)
-(* rewrite /equals /= Equivalence.symmetricity => H'. *)
-(* move:(identity_morphism_is_left_identity id') => def. *)
-(* rewrite Equivalence.symmetricity. *)
-(* by apply: Equivalence.transitivity; first by apply: H'. *)
-(* Qed. *)
+End CategoryOfFunctors.
+Notation funs_catMixin C D := (CatMixin (@funs_associativity C D) (@funs_compm0 C D) (@funs_comp0m C D) (@funs_comp_left C D) (@funs_comp_right C D)).
+Canonical funs_catType C D := Eval hnf in CatType Fun (C, D) (funs_catMixin C D).
+Notation funs := funs_catType.
 
-(* Definition canonical_solution {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) (lim : limit F L) := *)
-(*   match lim with *)
-(*   | Limit sol _ _ => sol *)
-(*   end. *)
+Notation "'Fun' ( C , D )" := (funs C D).
 
-(* Definition universality {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) (lim : limit F L) : *)
-(*   forall (L' : Ob C) (sL' : solution_of_diagram F L'), *)
-(*     universal_morphism (canonical_solution lim) sL' := *)
-(*   match lim with *)
-(*   | Limit _ u _ => u *)
-(*   end. *)
+Module Limit.
+Section Axioms.
+Variables I C : category.
+Variable F : Fun (I, C).
+Local Notation solution_of_diagram L :=
+  (sig (fun (s : (forall A, Mor (L, F A))) =>
+         forall A B (f : Mor (A, B)), ('F f) \compm (s A) == (s B))).
+Local Definition morphism_of_solutions L L'
+      (sL : solution_of_diagram L) (sL' : solution_of_diagram L') :=
+    sig (fun l => forall A, (proj1_sig sL' A) == (proj1_sig sL A) \compm l).
+Local Definition universality_axiom L
+      (sL : solution_of_diagram L)
+      (u : (forall L' (sL' : solution_of_diagram L'), morphism_of_solutions sL sL')) :=
+  (forall L' u' (sL' : solution_of_diagram L'),
+      (forall A, (proj1_sig sL' A) == (proj1_sig sL A) \compm u') -> proj1_sig (u L' sL') == u').
+End Axioms.
+Module Exports.
+Structure limit I C F L :=
+  Pack {
+      canonical_solution : _;
+      universal_morphism : _;
+      universality : @universality_axiom I C F L canonical_solution universal_morphism;
+    }.
 
-(* Lemma add_loop {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) (limL : limit F L) (f : Mor (L, L)) : *)
-(*   let sL := canonical_solution limL in *)
-(*   (forall (A B : Ob Ic) (g : Mor (A, B)), *)
-(*     ('F g) \comp (` sL A \comp f) == (` sL B \comp f)) -> *)
-(*     (forall A : Ob Ic, ` sL A == ` sL A \comp f) -> *)
-(*   f == id. *)
-(* Proof. *)
-(* case: limL => sL uL pL /= H H'. *)
-(* have: ` (uL L sL) == f. *)
-(* apply pL, H'. *)
-(* have: ` (uL L sL) == id. *)
-(* apply pL. *)
-(* move => A. *)
-(* rewrite /equals Equivalence.symmetricity. *)
-(* apply: identity_morphism_is_right_identity. *)
-(* rewrite /equals Equivalence.symmetricity. *)
-(* move => H1 H2. *)
-(* rewrite Equivalence.symmetricity. *)
-(* apply (Equivalence.transitivity H1 H2). *)
-(* Qed. *)
+Local Lemma add_loop I C (F : Fun (I, C)) (L : Ob C) (limL : limit F L) (f : Mor (L, L)) :
+  let sL := canonical_solution limL in
+  (forall (A B : Ob I) (g : Mor (A, B)),
+    ('F g) \compm (proj1_sig sL A \compm f) == (proj1_sig sL B \compm f)) ->
+    (forall A : Ob I, proj1_sig sL A == proj1_sig sL A \compm f) ->
+  f == id.
+Proof.
+case: limL => sL uL pL /= H H'.
+have: proj1_sig (uL L sL) == f.
+apply pL, H'.
+have: proj1_sig (uL L sL) == id.
+apply pL.
+move => A.
+apply compm0.
+move => H1 H2.
+apply: Congruence.etrans; last apply: H1.
+by apply/symP.
+Defined.
+  
+Lemma limit_is_the_unique I C (F : Fun (I, C)) (L L' : Ob C) :
+ forall (limL : limit F L) (limL' : limit F L'), L == L'.
+Proof.
+move => limL limL' /=.
+do !apply: ex_intro.
+set u := (@universal_morphism _ _ _ _ limL' _ (canonical_solution limL)).
+set u' := (@universal_morphism _ _ _ _ limL _ (canonical_solution limL')).
+apply (@Isomorphisms _ _ _ (proj1_sig u) (proj1_sig u')).
+  apply (@add_loop I C F L limL).
+  move => A B g /=.
+  apply/symP.
+  apply: Congruence.etrans; last apply compmA.
+  apply subst_left.
+  apply/symP.
+  apply (proj2_sig (canonical_solution limL)).
+ move => A.
+ apply: Congruence.etrans; last apply compmA.
+ apply: Congruence.etrans; first apply (proj2_sig u A).
+ apply subst_left.
+ apply: Congruence.etrans; first apply (proj2_sig u' A).
+ apply/reflP.
+apply (@add_loop I C F L' limL').
+ move => A B g /=.
+ apply/symP.
+ apply: Congruence.etrans; last apply compmA.
+ apply subst_left.
+ apply/symP.
+ apply (proj2_sig (canonical_solution limL')).
+move => A.
+apply: Congruence.etrans; last apply compmA.
+apply: Congruence.etrans; first apply (proj2_sig u' A).
+apply subst_left.
+apply: Congruence.etrans; first apply (proj2_sig u A).
+apply/reflP.
+Defined.
+End Exports.
+End Limit.
+Export Limit.Exports.
 
-(* Lemma limit_is_the_unique {Ic C : category} (F : Fun (Ic, C)) (L L' : Ob C) : *)
-(*   forall (limL : limit F L) *)
-(*          (limL' : limit F L'), *)
-(*       let sL := canonical_solution limL in *)
-(*       let sL' := canonical_solution limL' in *)
-(*       let f := universality limL sL' in *)
-(*       let g := universality limL' sL in *)
-(*       isomorphisms `f `g. *)
-(* Proof. *)
-(* move=> limL limL'; *)
-(* apply Isomorphisms. *)
-(* apply (@add_loop _ _ F _ limL'). *)
-(* move => A B g. *)
-(* apply associativity_lhs, compatibility_right. *)
-(* apply Equivalence.symmetricity, (proj2_sig (canonical_solution limL')). *)
-(* move => A. *)
-(* rewrite associativity_rhs. *)
-(* case: limL => sL uL pL; *)
-(* have H1 : (` (canonical_solution (Limit pL)) A) == ` (canonical_solution limL') A \comp ` (universality limL' (canonical_solution (Limit pL))). *)
-(* by apply: (proj2_sig (universality limL' (canonical_solution (Limit pL))) A). *)
-(* rewrite -(subst_left_up_to_equals _ _ (proj2_sig (universality limL' (canonical_solution (Limit pL))) A)). *)
-(* by apply (proj2_sig (universality (Limit pL) (canonical_solution limL')) A). *)
-
-(* apply (@add_loop _ _ F _ limL). *)
-(* move => A B g. *)
-(* apply associativity_lhs, compatibility_right. *)
-(* apply Equivalence.symmetricity, (proj2_sig (canonical_solution limL)). *)
-(* move => A. *)
-(* rewrite associativity_rhs. *)
-(* case: limL' => sL uL pL; *)
-(* have H1 : (` (canonical_solution (Limit pL)) A) == ` (canonical_solution limL) A \comp ` (universality limL (canonical_solution (Limit pL))). *)
-(* by apply: (proj2_sig (universality limL (canonical_solution (Limit pL))) A). *)
-(* rewrite -(subst_left_up_to_equals _ _ (proj2_sig (universality limL (canonical_solution (Limit pL))) A)). *)
-(* by apply (proj2_sig (universality (Limit pL) (canonical_solution limL)) A). *)
-(* Qed. *)
-
-(* (* *)
+Section Ordinal.
+Variable n : nat.
 (* 0 --> 1 *)
 (* |     | *)
 (* >     > *)
 (* 2 --> 3 *)
-(* *) *)
-(* Definition catn_base n (x y : ordinal n) := *)
-(*   match x, y with *)
-(*   | Ordinal i _, Ordinal j _ => i <= j : Type *)
-(*   end. *)
+Definition catnm (x y : ordinal n) :=
+  match x, y with
+  | Ordinal i _, Ordinal j _ =>
+    i <= j
+  end.
+Section TrivialEquiv.
+Variable x y : ordinal n.
+Lemma catnm_symP : @Equivalence.symmetricity (catnm x y) (fun _ _ => true).
+Proof. by []. Qed.
+Lemma catnm_transP : @Equivalence.transitivity (catnm x y) (fun _ _ => true).
+Proof. by []. Qed.
+Lemma catnm_reflP : @Equivalence.reflexivity (catnm x y) (fun _ _ => true).
+Proof. by []. Qed.
+Definition catnm_equivMixin := EquivMixin catnm_symP catnm_transP catnm_reflP.
+Canonical catnm_equivType := EquivType (catnm x y) catnm_equivMixin.
+End TrivialEquiv.
 
-(* Definition catn_comp n *)
-(*            (x y z : ordinal n) *)
-(*            (g : catn_base y z) *)
-(*            (f : catn_base x y) : catn_base x z. *)
-(* case: x y z f g => [x Hx] [y Hy] [z Hz] /=. *)
-(* exact: leq_trans. *)
-(* Defined. *)
+Definition catnc
+           (x y z : ordinal n)
+           (g : catnm y z)
+           (f : catnm x y) : catnm x z.
+case: x y z f g => [x Hx] [y Hy] [z Hz] /=.
+exact: leq_trans.
+Defined.
 
-(* Definition catn_id n (x : ordinal n) : catn_base x x. *)
-(* case: x => [x Hx] /=. *)
-(* exact: leqnn. *)
-(* Defined. *)
+Definition catn_id (x : ordinal n) : catnm x x.
+case: x => [x Hx] /=.
+exact: leqnn.
+Defined.
 
-(* Example catn (n :  nat) : category. *)
-(* refine (@Category (ordinal n) *)
-(*                   (@catn_base n) *)
-(*                   (fun A B => Equivalence.trivialMixin (catn_base A B)) *)
-(*                   (@catn_comp n) *)
-(*                   (@catn_id n)  _ _ _ _ _) => //. *)
-(* Defined. *)
+Lemma catn_associativity : Category.associativity_of_morphisms catnc.
+Proof. by []. Defined.
 
-(* Example cat0 : category := catn 0. *)
-(* Example cat1 : category := catn 1. *)
-(* Example cat2 : category := catn 2. *)
-(* Example cat4 : category := catn 4. *)
-(* Notation square := cat4. *)
+Lemma catn_compm0 : Category.identity_morphism_is_right_identity catn_id catnc.
+Proof. by []. Defined.
 
-(* Section Limit. *)
-(* Variable C : category. *)
-(* Example trivial_embedding1 (A : Ob C) : Fun(cat1, C). *)
-(* refine (@Functor _ _ (fun _ => A) (fun _ _ _ => id) _ _ _) => //; intros. *)
-(* + rewrite /equals; apply Equivalence.reflexivity. *)
-(* + rewrite /equals Equivalence.symmetricity. *)
-(*   apply identity_morphism_is_right_identity. *)
-(* + rewrite /equals; apply Equivalence.reflexivity. *)
-(* Defined. *)
+Lemma catn_comp0m : Category.identity_morphism_is_left_identity catn_id catnc.
+Proof. by []. Defined.
 
-(* Definition trivial_embedding0_ob (A : Ob cat0) : Ob C. *)
-(* case: A => [] //. *)
-(* Defined. *)
+Lemma catn_comp_left : Category.compatibility_left catnc.
+Proof. by []. Defined.
 
-(* Definition trivial_embedding0_mor (A B : Ob cat0) : *)
-(*   Mor(A, B) -> *)
-(*   Mor(trivial_embedding0_ob A, trivial_embedding0_ob B). *)
-(* case: A => [] //. *)
-(* Defined. *)
+Lemma catn_comp_right : Category.compatibility_right catnc.
+Proof. by []. Defined.
+Notation catn_catMixin := (CatMixin catn_associativity catn_compm0 catn_comp0m catn_comp_left catn_comp_right).
+Canonical catn_catType := Eval hnf in CatType (ordinal n) catn_catMixin.
+End Ordinal.
+Notation catn := catn_catType.
+Example cat0 : category := catn 0.
+Example cat1 : category := catn 1.
+Example cat2 : category := catn 2.
+Example cat4 : category := catn 4.
+Notation square := cat4.
 
-(* Example trivial_embedding0 : Fun(cat0, C). *)
-(* refine (@Functor _ _ trivial_embedding0_ob trivial_embedding0_mor _ _ _) *)
-(*         => //; case => //. *)
-(* Defined. *)
+Definition canonical_embedding1 C (A : Ob C) :=
+  {|
+    map_of_objects := fun _ : cat1 => A;
+    map_of_morphisms := fun _ _ _ => id;
+    id_id := fun _ : cat1 => reflP;
+    pres_comp := fun _ _ _ _ _ => comp0m id;
+    pres_equiv := fun _ _ _ _ _ => reflP
+  |}.
+Section CanonicalEmmbedding0.
+Variable C : category.
+Local Definition embedding0_ob (A : Ob cat0) :=
+  match A with
+  | @Ordinal _ m x =>
+    match x in (_ = H) return (if H then Ob C else True) with
+    | erefl => I
+    end
+  end.
+Local Definition embedding0_mor (A : Ob cat0) :=
+  match A with
+  | @Ordinal _ m x =>
+    match x in (_ = H) return
+          (if H then (forall B (_ : Mor(A, B)), Mor(embedding0_ob A, embedding0_ob B)) else True) with
+    | erefl => I
+    end
+  end.
 
-(* Definition trivial_embedding2_ob {T : Type} (E F : T) (A : Ob cat2) := *)
-(*   match A with *)
-(*   | Ordinal 0 _ => E *)
-(*   | Ordinal 1 _ => F *)
-(*   | Ordinal _ _ => F (* absurd case *) *)
-(*   end. *)
+Definition canonical_embedding0 : Fun(cat0, C).
+refine (@Functor _ _ embedding0_ob embedding0_mor _ _ _)
+        => //; case => //.
+Defined.
+End CanonicalEmmbedding0.
 
-(* Definition trivial_embedding2_mor (A B : Ob C) (g : Mor(A, B)) (E F : Ob cat2) (f : Mor(E, F)) : *)
-(*     Mor(trivial_embedding2_ob A B E, trivial_embedding2_ob A B F). *)
-(* case: E F f => [m Hm] [n Hn] f. *)
-(* case: m Hm f => [|m] Hm f. *)
-(*  case: n Hn f => [|n] Hn f. *)
-(*   apply id. *)
-(*  case: n Hn f => [|n] Hn f. *)
-(*   apply g. *)
-(*  case: n Hn f => //. *)
-(* case: m Hm f => [|m] Hm f. *)
-(*  case: n Hn f => [|n] Hn //= f. *)
-(*  case: n Hn f => [|n] Hn //= f. *)
-(*  apply id. *)
-(* case: m Hm f => //. *)
-(* Defined. *)
+Section CanonicalEmmbedding2.
+Variable C : category.
+Local Definition embedding2_ob {T : Type} (E F : T) (A : Ob cat2) :=
+  match A with
+  | Ordinal 0 _ => E
+  | Ordinal 1 _ => F
+  | Ordinal _ _ => F (* absurd case *)
+  end.
 
-(* Example trivial_embedding2 (A B : Ob C) (f : Mor(A, B)) : Fun(cat2, C). *)
-(* refine (@Functor _ _ (trivial_embedding2_ob A B) *)
-(*                  (@trivial_embedding2_mor A B f) *)
-(*                  _ _ _) => //. *)
-(* case => m Hm. *)
-(* repeat case:m Hm => [|m] Hm //=; apply Equivalence.reflexivity. *)
-(* case => [m Hm] [n Hn] [p Hp] h i. *)
-(* repeat case:m Hm h => [|m] Hm h //=; *)
-(* repeat case:n Hn i h => [|n] Hn i h //=; *)
-(* repeat case:p Hp i h => [|p] Hp i h //=; *)
-(* rewrite /equals Equivalence.symmetricity; *)
-(* try apply identity_morphism_is_left_identity; *)
-(* apply identity_morphism_is_right_identity. *)
-(* case => [m Hm] [n Hn] h i H. *)
-(* repeat case:m Hm i h H => [|m] Hm i h H //=; *)
-(* repeat case:n Hn i h H => [|n] Hn i h H //=; *)
-(* repeat case:p Hp i h H => [|p] Hp i h H //=; *)
-(* apply Equivalence.reflexivity. *)
-(* Defined. *)
+Local Definition embedding2_mor (A B : Ob C) (g : Mor(A, B)) (E F : Ob cat2) (f : Mor(E, F)) :
+    Mor(embedding2_ob A B E, embedding2_ob A B F).
+case: E F f => [m Hm] [n Hn] f.
+case: m Hm f => [|m] Hm f.
+ case: n Hn f => [|n] Hn f.
+  apply id.
+ case: n Hn f => [|n] Hn f.
+  apply g.
+ case: n Hn f => //.
+case: m Hm f => [|m] Hm f.
+ case: n Hn f => [|n] Hn //= f.
+ case: n Hn f => [|n] Hn //= f.
+ apply id.
+case: m Hm f => //.
+Defined.
 
-(* Definition opposite_category : category. *)
-(* refine (@Category (Ob C) *)
-(*                   (fun A B => Mor(B, A)) *)
-(*                   (fun A B => @equivMixin C B A) *)
-(*                   (fun _ _ _ f g => g \comp f) *)
-(*                   (@id C) _ _ _ _ _) => //. *)
-(* move => D E F G /= h i j. *)
-(* rewrite Equivalence.symmetricity. *)
-(* apply associativity_of_morphisms. *)
-(* move => A B /= f. *)
-(* apply identity_morphism_is_left_identity. *)
-(* move => A B /= f. *)
-(* apply identity_morphism_is_right_identity. *)
-(* move => D E F /= f f' g Eq. *)
-(* apply compatibility_right. *)
-(* rewrite Equivalence.symmetricity //. *)
-(* move => D E F /= f f' g Eq. *)
-(* apply compatibility_left. *)
-(* rewrite Equivalence.symmetricity //. *)
-(* Defined. *)
+Definition canonical_embedding2 (A B : Ob C) (f : Mor(A, B)) : Fun(cat2, C).
+refine (@Functor _ _ (embedding2_ob A B)
+                 (@embedding2_mor A B f)
+                 _ _ _) => //.
+case => m Hm; do !case:m Hm => [|m] Hm //=; by apply/reflP.
+case => [m Hm] [n Hn] [p Hp] h i;
+do !case:m Hm h => [|m] Hm h //=;
+do !case:n Hn i h => [|n] Hn i h //=;
+do !case:p Hp i h => [|p] Hp i h //=;
+(try by apply compm0); by apply comp0m.
+case => [m Hm] [n Hn] h i H.
+do !case:m Hm i h H => [|m] Hm i h H //=;
+do !case:n Hn i h H => [|n] Hn i h H //=;
+by apply/reflP.
+Defined.
+End CanonicalEmmbedding2.
 
-(* Definition final_object L := limit trivial_embedding0 L. *)
-(* Definition kernel A B (f : Mor(A, B)) L := limit (trivial_embedding2 f) L. *)
-(* End Limit. *)
-
-(* Section CoLimit. *)
-(* Variable C : category. *)
-(* Definition initinal_object L := limit (@trivial_embedding0 (Op C)) L. *)
-(* Definition cokernel A B (f : Mor(A, B)) L := *)
-(*   limit (@trivial_embedding2 (Op C) _ _ f) L. *)
-(* End CoLimit. *)
-
-(* Example pushout {C D : category} (F : Fun (C, D)) : category. *)
-(* refine (@Category { B : Ob D | exists (A : Ob C), F (A) = B } *)
-(*                   (fun A B => Mor (proj1_sig A, proj1_sig B)) *)
-(*                   (fun A B => @equivMixin D (proj1_sig A) (proj1_sig B)) *)
-(*                   (fun A B C => @comp D (proj1_sig A) (proj1_sig B) (proj1_sig C)) *)
-(*                   _ _ _ _ _ _); intros. *)
-(* by apply: associativity_of_morphisms. *)
-(* by apply: identity_morphism_is_right_identity. *)
-(* by apply: identity_morphism_is_left_identity. *)
-(* by apply: compatibility_left. *)
-(* by apply: compatibility_right. *)
-(* Defined. *)
-
-
-(* Definition trivial_embedding2_ob {T : Type} (E F : T) (A : Ob cat2) := *)
-(*   match A with *)
-(*   | Ordinal 0 _ => E *)
-(*   | Ordinal 1 _ => F *)
-(*   | Ordinal _ _ => F (* absurd case *) *)
-(*   end. *)
+Definition final_object C L := limit (canonical_embedding0 C) L.
+Definition kernel C (A B : Ob C) (f : Mor(A, B)) L := limit (canonical_embedding2 f) L.
+Definition initinal_object C L := limit (canonical_embedding0 (Op C)) L.
+Definition cokernel C (A B : Ob C) (f : Mor(A, B)) L :=
+  limit (@canonical_embedding2 (Op C) _ _ f) L.
 
 (* Example pair (C D : category) : category. *)
 
@@ -840,14 +888,4 @@ Notation "'Op' C" := (opposite_category C) (at level 1).
 (*     injective f -> *)
 (*     surjective f -> adjunction  *)
     
-                      
-    
-  
-(* Inductive limit {Ic C : category} (F : Fun (Ic, C)) (L : Ob C) : Type := *)
-(*   Limit : forall (sL : solution_of_diagram F L) *)
-(*                  (u : (forall (L' : Ob C) (sL' : solution_of_diagram F L'), universal_morphism sL sL')), *)
-(*     (forall (L' : Ob C) (sL' : solution_of_diagram F L') *)
-(*             (u' :  Mor (L', L)), *)
-(*             (forall (A : Ob Ic), (`sL' A) == (`sL A) \comp u') -> ` (u L' sL') == u') -> limit F L. *)
-  
-(* End Category. *)
+(* TODO: write about adjunctions. *)
