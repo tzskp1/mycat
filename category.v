@@ -103,7 +103,7 @@ Local Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
 Local Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
 
 Lemma identity_morphism_is_the_unique C (A : Ob C) (id' : Mor (A, A)) :
-  (forall {B : Ob C} (f : Mor (A, B)), (f \compm id') == f) -> id' == id.
+  (forall B (f : Mor (A, B)), (f \compm id') == f) -> id' == id.
 Proof.
 move => H.
 apply: Congruence.etrans; last by apply H.
@@ -295,32 +295,32 @@ Section LocalArg.
 Variable C : category.
 Local Notation iti :=
   (fun (A B : Ob C) =>
-     exists (f : Mor (A, B)) (g : Mor (B, A)), isomorphisms f g).
+     exists (f : Mor (A, B) * Mor (B, A)), isomorphisms (fst f) (snd f)).
 Lemma iti_sym :
   Equivalence.symmetricity iti.
 Proof.
   move => ? ?.
-  split; move=> [N [M [H1 H2]]];
-  do !apply: ex_intro;
-  by (apply Isomorphisms; first by apply: H2).
+  split; move=> [[N M] /= [] H1 H2];
+  apply: ex_intro;
+  by apply (@Isomorphisms _ _ _ (fst (M,N)) (snd (M,N)) H2 H1).
 Defined.
 
 Lemma iti_refl :
   Equivalence.reflexivity iti.
 Proof.
-  move => ?; do !apply: ex_intro.
-  apply Isomorphisms;
-  apply/symP;
-  by apply compm0.
+  move => ?; apply: ex_intro.
+  apply: (@Isomorphisms _ _ _ (fst (id, id)) (snd (id, id)) _ _);
+  apply/symP => /=;
+  by apply comp0m.
 Defined.
 
 Lemma iti_trans :
   Equivalence.transitivity iti.
 Proof.
   move => ? ? ?.
-  move => [f1 [g1 [H11 H12]]] [f2 [g2 [H21 H22]]];
-  do !apply: ex_intro;
-  apply (@Isomorphisms _ _ _ (f2 \compm f1) (g1 \compm g2));
+  move => [[f1 g1] [H11 H12]] [[f2 g2] [H21 H22]];
+  apply: ex_intro;
+  apply (@Isomorphisms _ _ _ (fst (f2 \compm f1, g1 \compm g2)) _) => /=;
   (apply: Congruence.etrans; first by apply: compmA);
   [ apply: Congruence.etrans; last by apply H11
   | apply: Congruence.etrans; last by apply H22 ];
@@ -333,76 +333,48 @@ End LocalArg.
 
 Notation iti_equivMixin C := (EquivMixin (@iti_sym C) (@iti_trans C) (@iti_refl C)).
 
-Lemma ni_sym C D (F G : Fun (C, D)) (N : Nat (F, G)) (M : Nat (G, F)) :
-  natural_isomorphisms N M <-> natural_isomorphisms M N.
-Proof.
-  split; case => H;
-  apply: NaturalIsomorphisms => X;
-  by case: (H X).
-Defined.
-
-Lemma ni_refl C D (F : Fun (C, D)) :
-  natural_isomorphisms (@idn _ _ F) (@idn _ _ F).
-Proof.
-  apply: NaturalIsomorphisms => X.
-  apply: Isomorphisms => /=;
-  apply/symP; by apply comp0m.
-Defined.
-
-Lemma ni_trans C D (F G H : Fun (C, D))
-      (N1 : Nat (F, G)) (M1 : Nat (G, F))
-      (N2 : Nat (G, H)) (M2 : Nat (H, G)) :
-  natural_isomorphisms N1 M1
-  -> natural_isomorphisms N2 M2
-  -> natural_isomorphisms (N2 \compn N1) (M1 \compn M2).
-Proof.
-  move=> [H1] [H2].
-  apply: NaturalIsomorphisms => X.
-  apply: Isomorphisms => /=;
-  [ case: (H1 X) => HX _;
-    case: (H2 X) => ? _
-  | case: (H1 X) => _ ?;
-    case: (H2 X) => _ HX ];
-  (apply: Congruence.etrans;
-   first (by apply: compmA));
-  (apply/symP; apply: Congruence.etrans;
-    first (by apply/symP; apply HX));
-  apply: subst_right;
-  (apply: Congruence.etrans; last (by apply: compmA));
-  (apply: Congruence.etrans; first (by apply: comp0m));
-  apply: subst_left; by apply/symP.
-Defined.
-
 Section LocalArg.
 Variables C D : category.
 Local Notation itn :=
   (fun (F G : Fun (C, D)) => 
-     exists (N : Nat (F, G)) (M : Nat (G, F)), natural_isomorphisms N M).
+     exists (N : Nat (F, G) * Nat (G, F)), natural_isomorphisms (fst N) (snd N)).
 Lemma itn_sym :
   Equivalence.symmetricity itn.
 Proof.
   move => ? ?.
-  split; move=> [N [M H]];
-  do !apply: ex_intro;
-  rewrite ni_sym; by apply: H.
+  split; move=> [[N M] [H]];
+  apply: ex_intro;
+  apply: (@NaturalIsomorphisms _ _ _ _ (fst (M, N))) => X;
+  by case: (H X).
 Defined.
 
 Lemma itn_refl :
   Equivalence.reflexivity itn.
 Proof.
-  move => ?.
-  do !apply: ex_intro.
-  exact: ni_refl.
+  move => X.
+  apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (idn X, idn X))) => x.
+  apply: Isomorphisms => /=;
+  apply/symP; by apply comp0m.
 Defined.
 
 Lemma itn_trans :
   Equivalence.transitivity itn.
 Proof.
   move => ? ? ?.
-  move => [N1 [M1 H1]] [N2 [M2 H2]].
-  do !apply: ex_intro.
-  apply ni_trans; first (by apply H1);
-  by apply H2.
+  move => [[N1 M1] [H1]] [[N2 M2] [H2]];
+  apply: ex_intro;
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (N2 \compn N1, M1 \compn M2)) _) => /= X;
+  apply: Isomorphisms => /=;
+  case: (H1 X) => /= [H11 ?];
+  case: (H2 X) => /= [? H22];
+  (apply: Congruence.etrans; first by apply: compmA);
+  [ apply: Congruence.etrans; last by apply H11
+  | apply: Congruence.etrans; last by apply H22 ];
+  apply subst_right => /=;
+  (apply/symP; apply: Congruence.etrans; last by apply compmA);
+  (apply: Congruence.etrans; first (by apply: comp0m));
+  apply subst_left; by apply/symP.
 Defined.
 End LocalArg.
 
@@ -454,10 +426,10 @@ Section CategoryOfCategories.
 Lemma cats_associativity : @Category.associativity_of_morphisms category _ composition_of_functors.
 Proof.
   move => /= C D E F h i j.
-  do !apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _
-                              (@NaturalTransformation _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (natural_map (idn _)) (idn_map_naturality _))
-                              (@NaturalTransformation _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (natural_map (idn _)) (idn_map_naturality _))).
+  set L := @NaturalTransformation _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (natural_map (idn _)) (idn_map_naturality _).
+  set R := @NaturalTransformation _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (natural_map (idn _)) (idn_map_naturality _).
+  apply: ex_intro;
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _).
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
@@ -465,10 +437,10 @@ Defined.
 Lemma cats_compm0 : @Category.identity_morphism_is_right_identity category _ idf composition_of_functors.
 Proof.
   move => /= C D f.
-  do !apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _
-                              (@NaturalTransformation _ _ f (f \compf idf _) (natural_map (idn _)) (idn_map_naturality _))
-                              (@NaturalTransformation _ _ (f \compf idf _) f (natural_map (idn _)) (idn_map_naturality _))).
+  set L := @NaturalTransformation _ _ f (f \compf idf _) (natural_map (idn _)) (idn_map_naturality _).
+  set R := @NaturalTransformation _ _ (f \compf idf _) f (natural_map (idn _)) (idn_map_naturality _).
+  apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _).
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
@@ -476,23 +448,23 @@ Defined.
 Lemma cats_comp0m : @Category.identity_morphism_is_left_identity category _ idf composition_of_functors.
 Proof.
   move => /= C D f.
-  do !apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _
-                              (@NaturalTransformation _ _ f (idf _ \compf f) (natural_map (idn _)) (idn_map_naturality _))
-                              (@NaturalTransformation _ _ (idf _ \compf f) f (natural_map (idn _)) (idn_map_naturality _))).
+  set L := @NaturalTransformation _ _ f (idf _ \compf f) (natural_map (idn _)) (idn_map_naturality _).
+  set R := @NaturalTransformation _ _ (idf _ \compf f) f (natural_map (idn _)) (idn_map_naturality _).
+  apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _).
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: compm0.
 Defined.
 
 Lemma cats_comp_left : @Category.compatibility_left category _ composition_of_functors.
 Proof.
-  move => ? ? ? f f' g /= [] N [] M [H].
-  do !apply: ex_intro.
-  refine (@NaturalIsomorphisms _ _ _ _
-                              (@NaturalTransformation _ _ (g \compf f) (g \compf f')
-                                                      (natural_map (g \compfn N)) (compfn_naturality _ _))
-                              (@NaturalTransformation _ _ (g \compf f') (g \compf f) 
-                                                      (natural_map (g \compfn M)) (compfn_naturality _ _)) _) => X.
+  move => ? ? ? f f' g /= [] [] N M [H].
+  set L := @NaturalTransformation _ _ (g \compf f) (g \compf f')
+                                  (natural_map (g \compfn N)) (compfn_naturality _ _).
+  set R := @NaturalTransformation _ _ (g \compf f') (g \compf f)
+                                  (natural_map (g \compfn M)) (compfn_naturality _ _).
+  apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _) => X.
   apply: Isomorphisms => /=;
   (apply: Congruence.etrans;
    first by (apply/symP; apply pres_comp));
@@ -502,13 +474,13 @@ Defined.
 
 Lemma cats_comp_right : @Category.compatibility_right category _ composition_of_functors.
 Proof.
-  move => ? ? ? f g g' /= [] N [] M [H].
-  do !apply: ex_intro.
-  refine (@NaturalIsomorphisms _ _ _ _
-                              (@NaturalTransformation _ _ (g \compf f) (g' \compf f)
-                                                      (natural_map (N \compnf f)) (compnf_naturality _ _))
-                              (@NaturalTransformation _ _ (g' \compf f) (g \compf f)
-                                                      (natural_map (M \compnf f)) (compnf_naturality _ _)) _) => X.
+  move => ? ? ? f g g' /= [] [] N M [H].
+  set L := @NaturalTransformation _ _ (g \compf f) (g' \compf f)
+                                  (natural_map (N \compnf f)) (compnf_naturality _ _).
+  set R := @NaturalTransformation _ _ (g' \compf f) (g \compf f)
+                                  (natural_map (M \compnf f)) (compnf_naturality _ _).
+  apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _) => X;
   apply: Isomorphisms => /=;
   by case: (H (f X)).
 Defined.
@@ -691,10 +663,10 @@ Lemma limit_is_the_unique I C (F : Fun (I, C)) (L L' : Ob C) :
  forall (limL : limit F L) (limL' : limit F L'), L == L'.
 Proof.
 move => limL limL' /=.
-do !apply: ex_intro.
+apply: ex_intro.
 set u := (@universal_morphism _ _ _ _ limL' _ (canonical_solution limL)).
 set u' := (@universal_morphism _ _ _ _ limL _ (canonical_solution limL')).
-apply (@Isomorphisms _ _ _ (proj1_sig u) (proj1_sig u')).
+apply (@Isomorphisms _ _ _ (fst (proj1_sig u, proj1_sig u')) _).
   apply (@add_loop I C F L limL).
   move => A B g /=.
   apply/symP.
@@ -726,6 +698,17 @@ End Exports.
 End Limit.
 Export Limit.Exports.
 
+Section TrivialEquiv.
+Variable T : Type.
+Lemma trivial_symP : @Equivalence.symmetricity T (fun _ _ => true).
+Proof. by []. Qed.
+Lemma trivial_transP : @Equivalence.transitivity T (fun _ _ => true).
+Proof. by []. Qed.
+Lemma trivial_reflP : @Equivalence.reflexivity T (fun _ _ => true).
+Proof. by []. Qed.
+Definition trivial_equivMixin := EquivMixin trivial_symP trivial_transP trivial_reflP.
+End TrivialEquiv.
+
 Section Ordinal.
 Variable n : nat.
 (* 0 --> 1 *)
@@ -735,19 +718,8 @@ Variable n : nat.
 Definition catnm (x y : ordinal n) :=
   match x, y with
   | Ordinal i _, Ordinal j _ =>
-    i <= j
+    i <= j : Prop
   end.
-Section TrivialEquiv.
-Variable x y : ordinal n.
-Lemma catnm_symP : @Equivalence.symmetricity (catnm x y) (fun _ _ => true).
-Proof. by []. Qed.
-Lemma catnm_transP : @Equivalence.transitivity (catnm x y) (fun _ _ => true).
-Proof. by []. Qed.
-Lemma catnm_reflP : @Equivalence.reflexivity (catnm x y) (fun _ _ => true).
-Proof. by []. Qed.
-Definition catnm_equivMixin := EquivMixin catnm_symP catnm_transP catnm_reflP.
-Canonical catnm_equivType := EquivType (catnm x y) catnm_equivMixin.
-End TrivialEquiv.
 
 Definition catnc
            (x y z : ordinal n)
@@ -756,6 +728,7 @@ Definition catnc
 case: x y z f g => [x Hx] [y Hy] [z Hz] /=.
 exact: leq_trans.
 Defined.
+Canonical catnm_equivType x y := EquivType (catnm x y) (trivial_equivMixin (catnm x y)).
 
 Definition catn_id (x : ordinal n) : catnm x x.
 case: x => [x Hx] /=.
@@ -853,7 +826,7 @@ do !case:m Hm h => [|m] Hm h //=;
 do !case:n Hn i h => [|n] Hn i h //=;
 do !case:p Hp i h => [|p] Hp i h //=;
 (try by apply compm0); by apply comp0m.
-case => [m Hm] [n Hn] h i H.
+case => [m Hm] [n Hn] h i H;
 do !case:m Hm i h H => [|m] Hm i h H //=;
 do !case:n Hn i h H => [|n] Hn i h H //=;
 by apply/reflP.
@@ -865,6 +838,149 @@ Definition kernel C (A B : Ob C) (f : Mor(A, B)) L := limit (canonical_embedding
 Definition initinal_object C L := limit (canonical_embedding0 (Op C)) L.
 Definition cokernel C (A B : Ob C) (f : Mor(A, B)) L :=
   limit (@canonical_embedding2 (Op C) _ _ f) L.
+
+Section TrivialCategory.
+Variable C : category.
+Inductive trivial_op (A B : Ob C) :=
+| Pair : forall (f : Mor (A, B)) (g : Mor (B, A)), isomorphisms f g -> trivial_op A B.
+  
+Definition trivial_equivType (x y : Ob C) := EquivType _ (trivial_equivMixin (trivial_op x y)).
+Definition tc (x y z : Ob C) : trivial_op y z -> trivial_op x y -> trivial_op x z.
+Proof.
+  case=> f1 g1 [H11 H12].
+  case=> f2 g2 [H21 H22].
+  apply: Pair.
+  apply (@Isomorphisms _ _ _ (f1 \compm f2) (g2 \compm g1));
+  (apply: Congruence.etrans; first by apply: compmA);
+  [ apply: Congruence.etrans; last by apply H21
+  | apply: Congruence.etrans; last by apply H12 ];
+  apply subst_right;
+  (apply/symP; apply: Congruence.etrans; last by apply compmA);
+  (apply: Congruence.etrans; first (by apply: comp0m));
+  apply subst_left; by apply/symP.
+Defined.
+
+Definition ti (A : Ob C) : trivial_op A A.
+  apply (@Pair A A Category.id Category.id).
+  refine (@Isomorphisms
+            C A A
+            (fst (@Category.id C (Category.class C) A, @Category.id C (Category.class C) A))
+            (snd (@Category.id C (Category.class C) A, @Category.id C (Category.class C) A)) _ _) => /=;
+  apply/symP; apply comp0m.
+Defined.
+
+Lemma tcat_associativity : @Category.associativity_of_morphisms (Ob C)
+                                                                trivial_equivType
+                                                                tc.
+Proof. by []. Defined.
+
+Lemma tcat_compm0 : @Category.identity_morphism_is_right_identity (Ob C)
+                                                                  trivial_equivType
+                                                                  ti
+                                                                  tc.
+Proof. by []. Defined.
+Lemma tcat_comp0m : @Category.identity_morphism_is_left_identity (Ob C)
+                                                                  trivial_equivType
+                                                                  ti
+                                                                  tc.
+Proof. by []. Defined.
+
+Lemma tcat_comp_left : @Category.compatibility_left (Ob C)
+                                                    trivial_equivType
+                                                    tc.
+Proof. by []. Defined.
+
+Lemma tcat_comp_right : @Category.compatibility_right (Ob C)
+                                                      trivial_equivType
+                                                      tc.
+Proof. by []. Defined.
+Notation tcat_catMixin := (CatMixin tcat_associativity tcat_compm0 tcat_comp0m tcat_comp_left tcat_comp_right).
+Definition tcat_catType := Eval hnf in CatType (Ob C) tcat_catMixin.
+
+Lemma cast_mor A B :
+   @Category.morphisms (Category.sort tcat_catType) tcat_catMixin A B
+-> @Category.morphisms (Category.sort C) (Category.class C) A B.
+  by case.
+Defined.
+
+Lemma cast_id_id : Functor.maps_identity_to_identity cast_mor.
+Proof. move => x; apply reflP. Defined.
+
+Lemma cast_pres_comp : Functor.preserve_composition cast_mor.
+  move => ??? /= [??] [??] [??] [??] /=; by apply reflP.
+Defined.
+
+Lemma pres_equiv : Functor.preserve_equivalence cast_mor.
+  move => ?? [f1 g1] [fg1 gf1] [f2 g2] [fg2 gf2] /= _.
+  apply: Congruence.etrans; first apply compm0.
+  apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply fg2).
+  apply: Congruence.etrans; first (apply/symP; apply compmA).
+  apply: Congruence.etrans; last (apply/symP; apply comp0m).
+  apply: subst_left.
+  apply: identity_morphism_is_the_unique => ? f.
+  apply: Congruence.etrans; first apply compmA.
+  apply: Congruence.etrans; first apply compm0.
+  apply: Congruence.etrans; first apply: subst_right;
+  last (apply/symP; apply compm0).
+  
+  apply/symP.
+  apply: fg1.
+  
+    by []. Defined.
+
+Definition inclusion := Functor id_id pres_comp pres_equiv.
+End TrivialCategory.
+Notation tcat := tcat_catType.
+Definition tcatn n := tcat (catn n).
+
+Section TrivialEmmbedding.
+Variable n : nat.
+Variable C : category.
+Variable choice : 'I_n -> Ob C.
+
+Lemma morphisms_are_identity n' m (P : _ -> Prop) :
+  (exists (f : (m <= n') * (n' <= m)), P f) ->  m = n'.
+move => [] [] [] H1 H2 _. apply anti_leq. by apply/andP. Qed.
+
+Lemma ord_eq n' m (Hm : m < n) (Hn' : n' < n)
+           (H : m = n') : eq_op (Ordinal Hm) (Ordinal Hn').
+rewrite eqE /=. by apply/eqP. Defined.
+
+Lemma embedding_mor_eq (E F: Ob (tcatn n)) : Mor(E, F) -> F = E.
+case: E F => [??] [??] /= H. apply/eqP. apply ord_eq.
+by apply/esym: (morphisms_are_identity H).
+Defined.
+
+Lemma cast_mor A B (f : (@Category.morphisms (Category.sort (tcatn n)) 
+                                               (Category.class (tcatn n)) A B)) :
+  (@Category.morphisms (Category.sort (catn_catType n))
+                       (Category.class (catn_catType n)) A B).
+  move: A B f => [] mA HA [] mB HB /=.
+  by case; case.
+Defined.
+
+Lemma embedding_mor (E F: Ob (tcatn n)) : Mor(E, F) -> Mor (choice E, choice F).
+Proof.
+  move=>f; move: (embedding_mor_eq f) => ->.
+  by apply Category.id.
+Defined.
+
+Lemma id_id : Functor.maps_identity_to_identity (fun A B f => @cast_mor A B f.
+Proof. case=> m i. case: id => []. by case => /=. Defined.
+
+Lemma pres_comp : Functor.preserve_composition cast_mor. by []. Defined.
+      
+Lemma pres_equiv : Functor.preserve_equivalence cast_mor. by []. Defined.
+
+Definition inclusion := Functor id_id pres_comp pres_equiv.
+End TrivialEmmbedding.
+
+Definition product C (A B : Ob C) (f : Mor(A, B)) L :=
+  limit (@canonical_embedding2 (Op C) _ _ f) L.
+
+Section Product.
+  
+End Product.
 
 (* Example pair (C D : category) : category. *)
 

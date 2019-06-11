@@ -67,6 +67,7 @@ Proof. by case: T => ? []. Qed.
 Lemma reflP T : Equivalence.reflexivity (@equiv_op T).
 Proof. by case: T => ? []. Qed.
 
+Arguments equiv_op {T} x /.
 Arguments symP [T f g].
 Arguments transP [T f g h].
 Arguments reflP [T f].
