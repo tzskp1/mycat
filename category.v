@@ -1,10 +1,9 @@
 From mathcomp Require Import all_ssreflect.
-Require Import equivalence.
+Require Import equivalence Coq.Program.Equality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-(* Set Printing Universes. *)
 Set Universe Polymorphism.
 
 Module Category.
@@ -63,7 +62,7 @@ Coercion sort : type >-> Sortclass.
 Notation category := type.
 Notation CatMixin := Mixin.
 Notation CatType T m := (@pack T m).
-Arguments id {objects m A}.
+Arguments id objects {m A}.
 Notation id := (@Category.id _ (class _) _).
 Notation morphisms := morphisms.
 Notation compm := compm.
@@ -422,6 +421,68 @@ End Exports.
 End Isomorphism.
 Export Isomorphism.Exports.
 
+Section TotalEquiv.
+Variable C : category.
+Structure total :=
+  TotalEquiv
+    { total_dom : Ob C;
+      total_cod : Ob C;
+      total_mor :> Mor (total_dom, total_cod) }.
+Local Notation td := total_dom.
+Local Notation tc := total_cod.
+Local Notation tm := total_mor.
+
+Definition total_op (f g : total) :=
+  let fA := td f in
+  let fB := tc f in
+  let fm := tm f in
+  let gA := td g in
+  let gB := tc g in
+  let gm := tm g in
+  fA = gA /\ gB = fB /\
+  forall (fgA : fA = gA) (fgB : gB = fB),
+    match fgA in (_ = y) return Mor (y, fB) with
+    | erefl => fm
+    end ==
+    match fgB in (_ = y) return Mor (gA, y) with
+    | erefl => gm
+    end.
+Local Arguments total_op f g /.
+
+Lemma total_symP : Equivalence.symmetricity total_op.
+Proof.
+  move=> [fA fB f] [gA gB g]; split;
+  move=> [] fgA [] fgB H; do !split=> //;
+  move=> {fgA fgB} /= fgA fgB;
+  move: (H (esym fgA) (esym fgB)) => {H};
+  destruct fgA, fgB => /= H;
+  by apply/symP.
+Qed.
+Lemma total_transP : Equivalence.transitivity total_op.
+Proof.
+  move=> [fA fB f] [gA gB g] [hA hB h] /= [] fgA [] fgB H1 [] ghA [] ghB H2; do !split.
+  + by apply/etrans; first apply fgA.
+  + by apply/etrans; first apply ghB.
+  + move=> fhA fhB.
+    move: (H1 (etrans fhA (esym ghA)) (esym (etrans (esym fhB) ghB))) (H2 ghA ghB) => {H1 H2}.
+    destruct fhA, ghA, fhB, ghB => /=.
+    by apply/transP.
+Qed.
+
+Lemma total_reflP : Equivalence.reflexivity total_op.
+Proof.
+  move=> [fA fB f] /=.
+  do !split.
+  move=> fgA fgB.
+  dependent destruction fgA.
+  dependent destruction fgB.
+  apply/reflP.
+Qed.
+Definition total_equivMixin := EquivMixin total_symP total_transP total_reflP.
+Definition total_equivType (A B E F : Ob C) (_ : Mor(A, B)) (_ : Mor(E, F)) :=
+  Eval hnf in EquivType _ total_equivMixin.
+End TotalEquiv.
+
 Section CategoryOfCategories.
 Lemma cats_associativity : @Category.associativity_of_morphisms category _ composition_of_functors.
 Proof.
@@ -634,7 +695,7 @@ Local Definition universality_axiom L
 End Axioms.
 Module Exports.
 Structure limit I C F L :=
-  Pack {
+  Limit {
       canonical_solution : _;
       universal_morphism : _;
       universality : @universality_axiom I C F L canonical_solution universal_morphism;
@@ -835,144 +896,107 @@ End CanonicalEmmbedding2.
 
 Definition final_object C L := limit (canonical_embedding0 C) L.
 Definition kernel C (A B : Ob C) (f : Mor(A, B)) L := limit (canonical_embedding2 f) L.
-Definition initinal_object C L := limit (canonical_embedding0 (Op C)) L.
+Definition initial_object C L := limit (canonical_embedding0 (Op C)) L.
 Definition cokernel C (A B : Ob C) (f : Mor(A, B)) L :=
   limit (@canonical_embedding2 (Op C) _ _ f) L.
 
 Section TrivialCategory.
 Variable C : category.
-Inductive trivial_op (A B : Ob C) :=
-| Pair : forall (f : Mor (A, B)) (g : Mor (B, A)), isomorphisms f g -> trivial_op A B.
-  
-Definition trivial_equivType (x y : Ob C) := EquivType _ (trivial_equivMixin (trivial_op x y)).
-Definition tc (x y z : Ob C) : trivial_op y z -> trivial_op x y -> trivial_op x z.
-Proof.
-  case=> f1 g1 [H11 H12].
-  case=> f2 g2 [H21 H22].
-  apply: Pair.
-  apply (@Isomorphisms _ _ _ (f1 \compm f2) (g2 \compm g1));
-  (apply: Congruence.etrans; first by apply: compmA);
-  [ apply: Congruence.etrans; last by apply H21
-  | apply: Congruence.etrans; last by apply H12 ];
-  apply subst_right;
-  (apply/symP; apply: Congruence.etrans; last by apply compmA);
-  (apply: Congruence.etrans; first (by apply: comp0m));
-  apply subst_left; by apply/symP.
-Defined.
+Definition triv_mor (x y : Ob C) := EquivType _ (trivial_equivMixin (x == y)).
+Definition triv_comp (x y z : Ob C) : y == z -> x == y -> x == z.
+Proof. move=> H1 H2. by apply/transP; first apply H2. Defined.
 
-Definition ti (A : Ob C) : trivial_op A A.
-  apply (@Pair A A Category.id Category.id).
-  refine (@Isomorphisms
-            C A A
-            (fst (@Category.id C (Category.class C) A, @Category.id C (Category.class C) A))
-            (snd (@Category.id C (Category.class C) A, @Category.id C (Category.class C) A)) _ _) => /=;
-  apply/symP; apply comp0m.
-Defined.
-
-Lemma tcat_associativity : @Category.associativity_of_morphisms (Ob C)
-                                                                trivial_equivType
-                                                                tc.
+Lemma tcat_associativity : @Category.associativity_of_morphisms _ triv_mor triv_comp.
 Proof. by []. Defined.
 
-Lemma tcat_compm0 : @Category.identity_morphism_is_right_identity (Ob C)
-                                                                  trivial_equivType
-                                                                  ti
-                                                                  tc.
+Lemma tcat_compm0 : @Category.identity_morphism_is_right_identity _
+                                                                  triv_mor
+                                                                  (fun _ => reflP) 
+                                                                  triv_comp.
 Proof. by []. Defined.
-Lemma tcat_comp0m : @Category.identity_morphism_is_left_identity (Ob C)
-                                                                  trivial_equivType
-                                                                  ti
-                                                                  tc.
-Proof. by []. Defined.
-
-Lemma tcat_comp_left : @Category.compatibility_left (Ob C)
-                                                    trivial_equivType
-                                                    tc.
+Lemma tcat_comp0m : @Category.identity_morphism_is_left_identity _
+                                                                 triv_mor
+                                                                 (fun _ => reflP)
+                                                                 triv_comp.
 Proof. by []. Defined.
 
-Lemma tcat_comp_right : @Category.compatibility_right (Ob C)
-                                                      trivial_equivType
-                                                      tc.
+Lemma tcat_comp_left : @Category.compatibility_left _ triv_mor triv_comp.
+Proof. by []. Defined.
+
+Lemma tcat_comp_right : @Category.compatibility_right _ triv_mor triv_comp.
 Proof. by []. Defined.
 Notation tcat_catMixin := (CatMixin tcat_associativity tcat_compm0 tcat_comp0m tcat_comp_left tcat_comp_right).
 Definition tcat_catType := Eval hnf in CatType (Ob C) tcat_catMixin.
-
-Lemma cast_mor A B :
-   @Category.morphisms (Category.sort tcat_catType) tcat_catMixin A B
--> @Category.morphisms (Category.sort C) (Category.class C) A B.
-  by case.
-Defined.
-
-Lemma cast_id_id : Functor.maps_identity_to_identity cast_mor.
-Proof. move => x; apply reflP. Defined.
-
-Lemma cast_pres_comp : Functor.preserve_composition cast_mor.
-  move => ??? /= [??] [??] [??] [??] /=; by apply reflP.
-Defined.
-
-Lemma pres_equiv : Functor.preserve_equivalence cast_mor.
-  move => ?? [f1 g1] [fg1 gf1] [f2 g2] [fg2 gf2] /= _.
-  apply: Congruence.etrans; first apply compm0.
-  apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply fg2).
-  apply: Congruence.etrans; first (apply/symP; apply compmA).
-  apply: Congruence.etrans; last (apply/symP; apply comp0m).
-  apply: subst_left.
-  apply: identity_morphism_is_the_unique => ? f.
-  apply: Congruence.etrans; first apply compmA.
-  apply: Congruence.etrans; first apply compm0.
-  apply: Congruence.etrans; first apply: subst_right;
-  last (apply/symP; apply compm0).
-  
-  apply/symP.
-  apply: fg1.
-  
-    by []. Defined.
-
-Definition inclusion := Functor id_id pres_comp pres_equiv.
 End TrivialCategory.
 Notation tcat := tcat_catType.
 Definition tcatn n := tcat (catn n).
 
 Section TrivialEmmbedding.
+Local Notation "f == g" := (@equiv_op (total_equivType f g) (TotalEquiv f) (TotalEquiv g)).
 Variable n : nat.
 Variable C : category.
-Variable choice : 'I_n -> Ob C.
+Variable choice : n.+1.-tuple Ob C.
 
-Lemma morphisms_are_identity n' m (P : _ -> Prop) :
-  (exists (f : (m <= n') * (n' <= m)), P f) ->  m = n'.
-move => [] [] [] H1 H2 _. apply anti_leq. by apply/andP. Qed.
+Inductive triv_ob' : nat -> Type :=
+| TrivOb : forall (i : nat), triv_ob' (i - n).
 
-Lemma ord_eq n' m (Hm : m < n) (Hn' : n' < n)
-           (H : m = n') : eq_op (Ordinal Hm) (Ordinal Hn').
-rewrite eqE /=. by apply/eqP. Defined.
+Local Coercion get_item (t : triv_ob' 0) :=
+  match t with
+  | TrivOb j => j
+  end.
 
-Lemma embedding_mor_eq (E F: Ob (tcatn n)) : Mor(E, F) -> F = E.
-case: E F => [??] [??] /= H. apply/eqP. apply ord_eq.
-by apply/esym: (morphisms_are_identity H).
-Defined.
+Definition triv_incl (t : triv_ob' 0) : Ob C := nth (thead choice) choice (get_item t).
 
-Lemma cast_mor A B (f : (@Category.morphisms (Category.sort (tcatn n)) 
-                                               (Category.class (tcatn n)) A B)) :
-  (@Category.morphisms (Category.sort (catn_catType n))
-                       (Category.class (catn_catType n)) A B).
-  move: A B f => [] mA HA [] mB HB /=.
-  by case; case.
-Defined.
+Definition triv_mor' (x y : triv_ob' 0) := EquivType _ (trivial_equivMixin (x = y)).
+Definition triv_comp' (x y z : triv_ob' 0) : y = z -> x = y -> x = z.
+move=>H1 H2. by apply: etrans; first by apply H2. Defined.
 
-Lemma embedding_mor (E F: Ob (tcatn n)) : Mor(E, F) -> Mor (choice E, choice F).
+Lemma tcat_associativity' : @Category.associativity_of_morphisms _ triv_mor' triv_comp'.
+Proof. by []. Defined.
+
+Lemma tcat_compm0' : @Category.identity_morphism_is_right_identity _
+                                                                  triv_mor'
+                                                                  (fun _ => erefl) 
+                                                                  triv_comp'.
+Proof. by []. Defined.
+Lemma tcat_comp0m' : @Category.identity_morphism_is_left_identity _
+                                                                 triv_mor'
+                                                                 (fun _ => erefl) 
+                                                                 triv_comp'.
+Proof. by []. Defined.
+
+Lemma tcat_comp_left' : @Category.compatibility_left _ triv_mor' triv_comp'.
+Proof. by []. Defined.
+
+Lemma tcat_comp_right' : @Category.compatibility_right _ triv_mor' triv_comp'.
+Proof. by []. Defined.
+Notation tcat_catMixin' := (CatMixin tcat_associativity' tcat_compm0' tcat_comp0m' tcat_comp_left' tcat_comp_right').
+Definition tcatn' := Eval hnf in CatType _ tcat_catMixin'.
+
+Lemma embedding_mor (E F: Ob tcatn') : Mor(E, F) -> Mor (triv_incl E, triv_incl F).
+move=> /= ->. by apply Category.id. Defined.
+
+Lemma triv_id_id : Functor.maps_identity_to_identity embedding_mor.
+Proof. move=> A; apply/reflP. Defined.
+
+Lemma triv_pres_comp : Functor.preserve_composition embedding_mor.
 Proof.
-  move=>f; move: (embedding_mor_eq f) => ->.
-  by apply Category.id.
+move=> E F G /= [] f [] g /=.
+destruct f, g.
+apply: Congruence.etrans.
+apply/compm0.
+apply: subst_right.
+apply: triv_id_id.
 Defined.
 
-Lemma id_id : Functor.maps_identity_to_identity (fun A B f => @cast_mor A B f.
-Proof. case=> m i. case: id => []. by case => /=. Defined.
+Lemma triv_pres_equiv (E F : triv_ob' 0)
+      (f : @morphisms tcatn' _ E F) : @Category.id _ _ (triv_incl E) == embedding_mor f.
+Proof.
+  move: f => /= f.
+  subst E.
+  apply: total_reflP.
+Defined.
 
-Lemma pres_comp : Functor.preserve_composition cast_mor. by []. Defined.
-      
-Lemma pres_equiv : Functor.preserve_equivalence cast_mor. by []. Defined.
-
-Definition inclusion := Functor id_id pres_comp pres_equiv.
 End TrivialEmmbedding.
 
 Definition product C (A B : Ob C) (f : Mor(A, B)) L :=

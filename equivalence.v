@@ -67,7 +67,7 @@ Proof. by case: T => ? []. Qed.
 Lemma reflP T : Equivalence.reflexivity (@equiv_op T).
 Proof. by case: T => ? []. Qed.
 
-Arguments equiv_op {T} x /.
+Arguments equiv_op {T} x : simpl never.
 Arguments symP [T f g].
 Arguments transP [T f g h].
 Arguments reflP [T f].
@@ -76,7 +76,9 @@ Prenex Implicits equiv_op symP transP reflP.
 
 Module Congruence.
 Lemma etrans (e : equivType) (x y z : e) : x == y -> y == z -> x == z.
-Proof. by move=> ?; apply: Equivalence.trans. Defined.
+Proof. by move=> ?; apply/transP. Defined.
+Lemma suff_eq (e : equivType) (x y : e) : x = y -> x == y.
+Proof. move=> ->; by apply/reflP. Defined.
 Section Compatibility.
 Variables e1 e2 e3 : equivType.
 Variable F : e1 -> e2 -> e3.
@@ -113,11 +115,8 @@ Lemma eq_reflP : @Equivalence.reflexivity T eq_op.
 Proof. by []. Qed.
 
 Definition eq_equivMixin := EquivMixin eq_symP eq_transP eq_reflP.
-Definition eq_equivType := EquivType (Equality.sort T) eq_equivMixin.
+Canonical eq_equivType := EquivType (Equality.sort T) eq_equivMixin.
 End EquivEq.
-Canonical nat_equivType := Eval compute in eq_equivType nat_eqType.
-Canonical bool_equivType := Eval compute in eq_equivType bool_eqType.
-Canonical ordinal_equivType n := Eval compute in eq_equivType (ordinal_eqType n).
 Lemma prop_symP : @Equivalence.symmetricity Prop iff.
 Proof. move => ??; split; by move => ->. Qed.
 
