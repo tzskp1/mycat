@@ -103,27 +103,57 @@ Arguments subst_right {e1 e2 e3 F} comp_op {_ _ _}.
 Arguments subst_left {e1 e2 e3 F} comp_op {_ _ _}.
 End Congruence.
 
-Section EquivEq.
+Section EqType.
 Variable T : eqType.
 Lemma eq_symP : @Equivalence.symmetricity T eq_op.
 Proof. split; by rewrite eq_sym. Qed.
-
 Lemma eq_transP : @Equivalence.transitivity T eq_op.
 Proof. by move=> ? ? ? /eqP -> /eqP ->. Qed.
-
 Lemma eq_reflP : @Equivalence.reflexivity T eq_op.
 Proof. by []. Qed.
-
 Definition eq_equivMixin := EquivMixin eq_symP eq_transP eq_reflP.
 Canonical eq_equivType := EquivType (Equality.sort T) eq_equivMixin.
-End EquivEq.
+End EqType.
+
+Section Prop'.
 Lemma prop_symP : @Equivalence.symmetricity Prop iff.
 Proof. move => ??; split; by move => ->. Qed.
-
 Lemma prop_transP : @Equivalence.transitivity Prop iff.
 Proof. move=> ? ? ? [] ? ? [] ? ?. split; by auto. Qed.
-
 Lemma prop_reflP : @Equivalence.reflexivity Prop iff.
 Proof. by []. Qed.
 Canonical prop_equivMixin := EquivMixin prop_symP prop_transP prop_reflP.
 Canonical prop_equivType := EquivType Prop prop_equivMixin.
+End Prop'.
+
+Section Map.
+Variable d : Type.
+Variable v : equivType.
+Definition map_op (f : d -> v) (g : d -> v) :=
+  forall z, f z == g z.
+Lemma map_symP : Equivalence.symmetricity map_op.
+Proof. move=> f g; split => /= H z; apply/symP; by apply: H. Qed.
+Lemma map_transP : Equivalence.transitivity map_op.
+Proof.
+move=> ? ? ? H1 H2 z.
+apply/transP; first by apply H1.
+apply: H2; apply/reflP.
+Qed.
+Lemma map_reflP : Equivalence.reflexivity map_op.
+Proof. move=> f x; apply/reflP. Qed.
+Definition map_equivMixin := EquivMixin map_symP map_transP map_reflP.
+Canonical map_equivType := Eval hnf in EquivType (d -> v) map_equivMixin.
+End Map.
+
+Section eq.
+Variable T : Type.
+Definition eqe_op := @eq T.
+Lemma eqe_symP : Equivalence.symmetricity eqe_op.
+Proof. move=> f g; split => H; by apply: esym. Qed.
+Lemma eqe_transP : Equivalence.transitivity eqe_op.
+Proof. move=> ? ? ? H1 H2. by apply: etrans; first apply H1. Qed.
+Lemma eqe_reflP : Equivalence.reflexivity eqe_op.
+Proof. move=> f; by apply erefl. Qed.
+Definition eqe_equivMixin := EquivMixin eqe_symP eqe_transP eqe_reflP.
+Canonical eqe_equivType := Eval hnf in EquivType T eqe_equivMixin.
+End eq.

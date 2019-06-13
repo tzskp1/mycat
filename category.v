@@ -50,13 +50,11 @@ Section ClassDef.
 Structure type := Pack {sort; _ : class_of sort; _ : Type}.
 Local Coercion sort : type >-> Sortclass.
 Variables (T : Type) (cT : type).
-
 Definition class := let: Pack _ c _ := cT return class_of cT in c.
-
 Definition pack c := @Pack T c T.
 Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c.
-
 End ClassDef.
+
 Module Exports.
 Coercion sort : type >-> Sortclass.
 Notation category := type.
@@ -88,10 +86,7 @@ Export Category.Exports.
 Local Notation "f == g" := (@equiv_op _ f g).
 
 Lemma compm_comp c (A B C : Ob c) : @Congruence.compatible
-                                      (Mor (B, C))
-                                      (Mor (A, B))
-                                      (Mor (A, C))
-                                     compm.
+                                      (Mor (B, C)) (Mor (A, B)) (Mor (A, C)) compm.
 Proof.
   move => f g h i H1 H2.
   apply: Equivalence.trans;
@@ -742,7 +737,6 @@ Lemma limit_is_the_unique I C (F : Fun (I, C)) :
 Proof.
 move => limL limL' /=.
 apply: ex_intro.
-Print universal_morphism.
 set u := (@universal_morphism _ _ _ limL' _ (canonical_solution limL)).
 set u' := (@universal_morphism _ _ _ limL _ (canonical_solution limL')).
 apply (@Isomorphisms _ _ _ (fst (proj1_sig u, proj1_sig u')) _).
@@ -1018,11 +1012,72 @@ End TrivialEmmbedding.
 
 Definition product C (A B : Ob C) :=
   limit (@trivial_embeddingn 1 _ [tuple of [:: A; B]]).
-Definition final_object C := limit (canonical_embedding0 C).
-Definition kernel C (A B : Ob C) (f : Mor(A, B)) := limit (canonical_embedding2 f).
-Definition initial_object C := limit (canonical_embedding0 (Op C)).
+Definition final_object C :=
+  limit (canonical_embedding0 C).
+Definition kernel C (A B : Ob C) (f : Mor(A, B)) :=
+  limit (canonical_embedding2 f).
+Definition initial_object C :=
+  limit (canonical_embedding0 (Op C)).
 Definition cokernel C (A B : Ob C) (f : Mor(A, B)) :=
   limit (@canonical_embedding2 (Op C) _ _ f).
+
+Section Types.
+Canonical types_equivType A B := map_equivType A (eqe_equivType B).
+Definition types_compm
+           (A B C : Type)
+           (f : types_equivType B C)
+           (g : types_equivType A B)
+  : types_equivType A C := (fun x => f (g x)).
+Definition types_id := (fun (A : Type) => ssrfun.id : types_equivType A A).
+Lemma types_associativity : Category.associativity_of_morphisms types_compm.
+Proof. move => C D E F h i j; by apply/reflP. Defined.
+Lemma types_compm0 : Category.identity_morphism_is_right_identity types_id types_compm.
+Proof. move => C D f x; by apply/reflP. Defined.
+Lemma types_comp0m : Category.identity_morphism_is_left_identity types_id types_compm.
+Proof. move => C D f x; by apply/reflP. Defined.
+Lemma types_comp_left : Category.compatibility_left types_compm.
+Proof.
+move => ? ? ? f f' g ff' x.
+move: (ff' x); by rewrite !equivE /= /eqe_op /types_compm => ->.
+Defined.
+Lemma types_comp_right : Category.compatibility_right types_compm.
+Proof. move => ? ? ? f g g' gg' x; apply: gg'. Defined.
+Definition types_catMixin :=
+CatMixin types_associativity types_compm0 types_comp0m types_comp_left types_comp_right.
+Canonical types_catType := Eval hnf in CatType Type types_catMixin.
+End Types.
+Notation types := types_catType.
+
+Variable A B : Ob types.
+Check (Mor (Mor (A, B) : Type, B) : Ob types).
+
+Module Adjunction.
+Section Axioms.
+Variables C D : category.
+Variable F : Fun (C, D).
+Variable G : Fun (D, C).
+Variable X : Ob C.
+Variable Y : Ob D.
+Mor (F X, Y)
+Mor (X, G Y)
+    
+Variable n : Nat (F, G).
+End Axioms.
+Structure adjunction C D :=
+  Adjunction
+    {
+      left_adj : Fun (C, D);
+      right_adj : Fun (D, C);
+      adjunction : 
+    }
+          (F : Fun (C, D)) (G : Fun (D, C)) (f : Nat (F, G)) : Type :=
+  : forall (A : Ob C)
+                      (B : Ob D)
+                      (f : Hom (A , G(B)) -> Hom (F(A), B)),
+    injective f ->
+    surjective f -> adjunction
+    
+End Adjunction.
 
 (* Example pair (C D : category) : category. *)
 
@@ -1039,11 +1094,4 @@ Definition cokernel C (A B : Ob C) (f : Mor(A, B)) :=
 (* intros; by apply: compatibility_right. *)
 (* Defined. *)
 
-(* Inductive adjunction {C D : category} (F : Fun (C, D)) (G : Fun (D, C)) (f : Nat (F, G)) : Type := *)
-(*   Adjunction : forall (A : Ob C) *)
-(*                       (B : Ob D) *)
-(*                       (f : Hom (A , G(B)) -> Hom (F(A), B)), *)
-(*     injective f -> *)
-(*     surjective f -> adjunction  *)
-    
 (* TODO: write about adjunctions. *)
