@@ -708,21 +708,24 @@ Local Definition universality_axiom L
       (forall A, (proj1_sig sL' A) == (proj1_sig sL A) \compm u') -> proj1_sig (u L' sL') == u').
 End Axioms.
 Module Exports.
-Structure limit I C F L :=
+Structure limit I C F :=
   Limit {
+      limit_object : _;
       canonical_solution : _;
       universal_morphism : _;
-      universality : @universality_axiom I C F L canonical_solution universal_morphism;
+      universality : @universality_axiom I C F limit_object canonical_solution universal_morphism;
     }.
 
-Local Lemma add_loop I C (F : Fun (I, C)) (L : Ob C) (limL : limit F L) (f : Mor (L, L)) :
+Local Notation L := limit_object.
+
+Local Lemma add_loop I C (F : Fun (I, C)) (limL : limit F) (f : Mor (L limL, L limL)) :
   let sL := canonical_solution limL in
   (forall (A B : Ob I) (g : Mor (A, B)),
     ('F g) \compm (proj1_sig sL A \compm f) == (proj1_sig sL B \compm f)) ->
     (forall A : Ob I, proj1_sig sL A == proj1_sig sL A \compm f) ->
   f == id.
 Proof.
-case: limL => sL uL pL /= H H'.
+case: limL f => L sL uL pL f /= H H'.
 have: proj1_sig (uL L sL) == f.
 apply pL, H'.
 have: proj1_sig (uL L sL) == id.
@@ -734,15 +737,16 @@ apply: Congruence.etrans; last apply: H1.
 by apply/symP.
 Defined.
   
-Lemma limit_is_the_unique I C (F : Fun (I, C)) (L L' : Ob C) :
- forall (limL : limit F L) (limL' : limit F L'), L == L'.
+Lemma limit_is_the_unique I C (F : Fun (I, C)) :
+ forall (limL : limit F) (limL' : limit F), L limL == L limL'.
 Proof.
 move => limL limL' /=.
 apply: ex_intro.
-set u := (@universal_morphism _ _ _ _ limL' _ (canonical_solution limL)).
-set u' := (@universal_morphism _ _ _ _ limL _ (canonical_solution limL')).
+Print universal_morphism.
+set u := (@universal_morphism _ _ _ limL' _ (canonical_solution limL)).
+set u' := (@universal_morphism _ _ _ limL _ (canonical_solution limL')).
 apply (@Isomorphisms _ _ _ (fst (proj1_sig u, proj1_sig u')) _).
-  apply (@add_loop I C F L limL).
+  apply (@add_loop I C F limL).
   move => A B g /=.
   apply/symP.
   apply: Congruence.etrans; last apply compmA.
@@ -755,7 +759,7 @@ apply (@Isomorphisms _ _ _ (fst (proj1_sig u, proj1_sig u')) _).
  apply subst_left.
  apply: Congruence.etrans; first apply (proj2_sig u' A).
  apply/reflP.
-apply (@add_loop I C F L' limL').
+apply (@add_loop I C F limL').
  move => A B g /=.
  apply/symP.
  apply: Congruence.etrans; last apply compmA.
@@ -908,12 +912,6 @@ by apply/reflP.
 Defined.
 End CanonicalEmmbedding2.
 
-Definition final_object C L := limit (canonical_embedding0 C) L.
-Definition kernel C (A B : Ob C) (f : Mor(A, B)) L := limit (canonical_embedding2 f) L.
-Definition initial_object C L := limit (canonical_embedding0 (Op C)) L.
-Definition cokernel C (A B : Ob C) (f : Mor(A, B)) L :=
-  limit (@canonical_embedding2 (Op C) _ _ f) L.
-
 Section TrivialCategory.
 Variable C : category.
 Definition triv_mor (x y : Ob C) := EquivType _ (trivial_equivMixin (x == y)).
@@ -1018,8 +1016,13 @@ Definition trivial_embeddingn := Functor triv_id_id triv_pres_comp triv_pres_equ
 (* TODO : tcatn' == tcatn *)
 End TrivialEmmbedding.
 
-Definition product C (A B : Ob C) L :=
-  limit (@trivial_embeddingn 1 _ [tuple of [:: A; B]]) L.
+Definition product C (A B : Ob C) :=
+  limit (@trivial_embeddingn 1 _ [tuple of [:: A; B]]).
+Definition final_object C := limit (canonical_embedding0 C).
+Definition kernel C (A B : Ob C) (f : Mor(A, B)) := limit (canonical_embedding2 f).
+Definition initial_object C := limit (canonical_embedding0 (Op C)).
+Definition cokernel C (A B : Ob C) (f : Mor(A, B)) :=
+  limit (@canonical_embedding2 (Op C) _ _ f).
 
 (* Example pair (C D : category) : category. *)
 
