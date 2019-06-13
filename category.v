@@ -481,6 +481,20 @@ Qed.
 Definition total_equivMixin := EquivMixin total_symP total_transP total_reflP.
 Definition total_equivType (A B E F : Ob C) (_ : Mor(A, B)) (_ : Mor(E, F)) :=
   Eval hnf in EquivType _ total_equivMixin.
+Lemma totalE (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) :
+  @equiv_op (total_equivType f g) (TotalEquiv f) (TotalEquiv g) <-> @equiv_op (Mor (A, B)) f g.
+Proof.
+split.
++ case=> fgA [] fgB /= H.
+  move: (H fgA fgB) => {H}.
+  dependent destruction fgA.
+  by dependent destruction fgB.
++ rewrite !equivE /= => H.
+  do !split=> //.
+  move=> fgA fgB.
+  dependent destruction fgA.
+  by dependent destruction fgB.
+Qed.
 End TotalEquiv.
 
 Section CategoryOfCategories.
@@ -946,7 +960,6 @@ Local Coercion get_item (t : triv_ob' 0) :=
   end.
 
 Definition triv_incl (t : triv_ob' 0) : Ob C := nth (thead choice) choice (get_item t).
-
 Definition triv_mor' (x y : triv_ob' 0) := EquivType _ (trivial_equivMixin (x = y)).
 Definition triv_comp' (x y z : triv_ob' 0) : y = z -> x = y -> x = z.
 move=>H1 H2. by apply: etrans; first by apply H2. Defined.
@@ -989,22 +1002,24 @@ apply: subst_right.
 apply: triv_id_id.
 Defined.
 
-Lemma triv_pres_equiv (E F : triv_ob' 0)
+Lemma triv_pres_equiv' (E F : triv_ob' 0)
       (f : @morphisms tcatn' _ E F) : @Category.id _ _ (triv_incl E) == embedding_mor f.
+Proof. move: f => /= f. subst E. apply: total_reflP. Defined.
+
+Lemma triv_pres_equiv : Functor.preserve_equivalence embedding_mor.
 Proof.
-  move: f => /= f.
-  subst E.
-  apply: total_reflP.
+move=> A B /= E F f.
+rewrite -totalE.
+apply: Congruence.etrans; last apply: triv_pres_equiv'.
+apply/symP; by apply: triv_pres_equiv'.
 Defined.
 
+Definition trivial_embeddingn := Functor triv_id_id triv_pres_comp triv_pres_equiv.
+(* TODO : tcatn' == tcatn *)
 End TrivialEmmbedding.
 
-Definition product C (A B : Ob C) (f : Mor(A, B)) L :=
-  limit (@canonical_embedding2 (Op C) _ _ f) L.
-
-Section Product.
-  
-End Product.
+Definition product C (A B : Ob C) L :=
+  limit (@trivial_embeddingn 1 _ [tuple of [:: A; B]]) L.
 
 (* Example pair (C D : category) : category. *)
 
