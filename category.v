@@ -71,6 +71,8 @@ Notation comp_left := comp_left.
 Notation comp_right := comp_right.
 Arguments compm {objects m A B C} _ _.
 Notation "f '\compm' g" := (compm f g) (at level 40).
+Notation "'#' f" := (fun g => comp g f) (at level 3).
+Notation "f '#'" := (fun g => comp f g) (at level 3).
 Notation "'Ob' C" := (sort C) (at level 1).
 Notation "'Mor' ( M , N )" := (@morphisms _ (class _) M N) (at level 5).
 Notation "[ 'CatMixin' 'of' T ]" := (class _ : mixin_of T)
@@ -1048,36 +1050,96 @@ Canonical types_catType := Eval hnf in CatType Type types_catMixin.
 End Types.
 Notation types := types_catType.
 
-Variable A B : Ob types.
-Check (Mor (Mor (A, B) : Type, B) : Ob types).
-
+Require Import Coq.Logic.FunctionalExtensionality Coq.Logic.ClassicalChoice Coq.Logic.Classical_Pred_Type.
 Module Adjunction.
 Section Axioms.
 Variables C D : category.
 Variable F : Fun (C, D).
 Variable G : Fun (D, C).
-Variable X : Ob C.
-Variable Y : Ob D.
-Mor (F X, Y)
-Mor (X, G Y)
-    
-Variable n : Nat (F, G).
+Variable n : forall X Y, Mor (F X, Y) -> Mor (X, G Y).
+Definition adjunction_axiom X Y :=
+    injective (fun g (x : Mor (F X, Y)) => @n X Y (g x))
+    /\ injective (fun g x => g (@n X Y x) : Mor (X,G Y)).
+Hypothesis separable : forall X Y (f : Mor (X, G Y)), decidable (exists w, @n X Y w = f).
+Lemma choice_as_section (A B : Type) :
+  forall (f : A -> B), (forall z, (exists w, f w = z)) ->
+      exists (g : B -> A), f \o g = ssrfun.id.
+Proof.
+move=> f Hf.
+have H: exists (g : { z : B | exists w, f w = z } -> A), forall x, proj1_sig x = f (g x).
+ apply (choice (fun (x : { z : B | exists w, f w = z }) y => (proj1_sig x) = f y)).
+ move=> [] x [] y Hx /=; apply: ex_intro; apply/esym; by apply Hx.
+case: H => g Hg; apply: ex_intro.
+apply: functional_extensionality => x.
+by apply/esym: (Hg (exist (fun z => exists w : A, f w = z) x (Hf x))). 
+Qed.
+Lemma pointwise_surj X Y :
+  adjunction_axiom X Y ->
+    (Mor (F X, Y) -> forall y, exists w : Mor (F X, Y), n w = y).
+Proof.
+move=> H st.
+case: H => HL HR.
+move=> y; apply not_all_not_ex => Hy.
+ suff : exists w, w <> y. case=> w Hw.
+ have: exists m : Mor (X, G Y) -> Mor (X, G Y),
+    forall w, ((exists z, (@n X Y) z = w) <-> m w = y).
+  apply not_all_not_ex => Hm.
+  apply: (Hm (fun f => if separable f then y else w)) => w''.
+  by case: (separable w'') => //=.
+ case=> m Hm.
+ have H': forall x, y = m (n x).
+  move=> x; move: (Hm (n x)) => {Hm} Hm;
+  have Hmi: exists z, n z = n x by apply: ex_intro; apply erefl.
+  case: Hm => Hm; by rewrite Hm.
+ move: Hm; rewrite -(HR (fun _ => y) m);
+  last by apply functional_extensionality.
+ move=> Hc; case: (Hc y) => _ {Hc} Hc.
+ case: (Hc erefl) => {Hc} x res.
+ apply: Hy; apply res.
+apply not_all_not_ex => Hw.
+apply: Hw; by apply: Hy.
+Qed.
+Lemma surj_inj X Y (st : Mor (F X, Y)) (m : Mor (X, G Y) -> Mor (F X, Y)) (H : adjunction_axiom X Y) :
+    comp (@n X Y) m = ssrfun.id -> comp m (@n X Y) = ssrfun.id.
+Proof.
+move=> H'.
+case: H => HL HR.
+apply: HL.
+apply: functional_extensionality => x /=.
+apply: (equal_f H' (n x)).
+Qed.
+Lemma equiv_statement X Y (st : Mor (F X, Y)) :
+  adjunction_axiom X Y <->
+  exists (m : Mor (X, G Y) -> Mor (F X, Y)),
+    comp (@n X Y) m = ssrfun.id /\ comp m (@n X Y) = ssrfun.id.
+Proof.
+split; last first.
+case=> m [] HL HR. split => x y H'.
+ + suff: ssrfun.id \o x = ssrfun.id \o y => //.
+   apply functional_extensionality=> t; rewrite -HR.
+   by apply equal_f, (f_equal m# H').
+ + suff: x \o ssrfun.id = y \o ssrfun.id => //. 
+   apply functional_extensionality=> t; rewrite -HL.
+   by apply equal_f, (f_equal (#m) H').
+move=> H.
+case: (choice_as_section (@pointwise_surj X Y H st)) => m Hm.
+apply (ex_intro _ m).
+split => //.
+by apply surj_inj.
+Qed.
 End Axioms.
+Module Exports.
 Structure adjunction C D :=
   Adjunction
     {
-      left_adj : Fun (C, D);
-      right_adj : Fun (D, C);
-      adjunction : 
-    }
-          (F : Fun (C, D)) (G : Fun (D, C)) (f : Nat (F, G)) : Type :=
-  : forall (A : Ob C)
-                      (B : Ob D)
-                      (f : Hom (A , G(B)) -> Hom (F(A), B)),
-    injective f ->
-    surjective f -> adjunction
-    
+      left_adj : _;
+      right_adj : _;
+      adj_map : _;
+      adj_axiom : forall X Y, @adjunction_axiom C D left_adj right_adj adj_map X Y;
+    }.
+End Exports.
 End Adjunction.
+Export Adjunction.Exports.
 
 (* Example pair (C D : category) : category. *)
 
