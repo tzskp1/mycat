@@ -124,9 +124,8 @@ End Axioms.
 Module Exports.
 Structure functor dom cod :=
   Functor {
-      map_of_objects : Ob dom -> Ob cod;
-      map_of_morphisms : forall A B,
-          Mor (A, B) -> Mor (map_of_objects A, map_of_objects B);
+      map_of_objects : _;
+      map_of_morphisms : _;
       id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
       pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
       pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
@@ -291,21 +290,21 @@ Section LocalArg.
 Variable C : category.
 Local Notation iti :=
   (fun (A B : Ob C) =>
-     exists (f : Mor (A, B) * Mor (B, A)), isomorphisms (fst f) (snd f)).
+     exists (f : Mor (A, B)) g, isomorphisms f g).
 Lemma iti_sym :
   Equivalence.symmetricity iti.
 Proof.
   move => ? ?.
-  split; move=> [[N M] /= [] H1 H2];
-  apply: ex_intro;
-  by apply (@Isomorphisms _ _ _ (fst (M,N)) (snd (M,N)) H2 H1).
+  split; move=> [N] [M] [H1 H2];
+  do !apply: ex_intro;
+  by apply (@Isomorphisms _ _ _ M N H2 H1).
 Defined.
 
 Lemma iti_refl :
   Equivalence.reflexivity iti.
 Proof.
-  move => ?; apply: ex_intro.
-  apply: (@Isomorphisms _ _ _ (fst (id, id)) (snd (id, id)) _ _);
+  move => ?; do !apply: ex_intro.
+  apply: (@Isomorphisms _ _ _ id id _ _);
   apply/symP => /=;
   by apply comp0m.
 Defined.
@@ -314,9 +313,9 @@ Lemma iti_trans :
   Equivalence.transitivity iti.
 Proof.
   move => ? ? ?.
-  move => [[f1 g1] [H11 H12]] [[f2 g2] [H21 H22]];
-  apply: ex_intro;
-  apply (@Isomorphisms _ _ _ (fst (f2 \compm f1, g1 \compm g2)) _) => /=;
+  move => [f1] [g1] [H11 H12] [f2] [g2] [H21 H22];
+  do !apply: ex_intro;
+  apply (@Isomorphisms _ _ _ (f2 \compm f1) (g1 \compm g2));
   (apply: Congruence.etrans; first by apply: compmA);
   [ apply: Congruence.etrans; last by apply H11
   | apply: Congruence.etrans; last by apply H22 ];
@@ -333,14 +332,14 @@ Section LocalArg.
 Variables C D : category.
 Local Notation itn :=
   (fun (F G : Fun (C, D)) => 
-     exists (N : Nat (F, G) * Nat (G, F)), natural_isomorphisms (fst N) (snd N)).
+     exists (N : Nat (F, G)) M, natural_isomorphisms N M).
 Lemma itn_sym :
   Equivalence.symmetricity itn.
 Proof.
   move => ? ?.
-  split; move=> [[N M] [H]];
-  apply: ex_intro;
-  apply: (@NaturalIsomorphisms _ _ _ _ (fst (M, N))) => X;
+  split; move=> [N] [M] [H];
+  do !apply: ex_intro;
+  apply: (@NaturalIsomorphisms _ _ _ _ M N) => X;
   by case: (H X).
 Defined.
 
@@ -348,8 +347,8 @@ Lemma itn_refl :
   Equivalence.reflexivity itn.
 Proof.
   move => X.
-  apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (idn X, idn X))) => x.
+  do !apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ (idn X) (idn X)) => x.
   apply: Isomorphisms => /=;
   apply/symP; by apply comp0m.
 Defined.
@@ -358,9 +357,9 @@ Lemma itn_trans :
   Equivalence.transitivity itn.
 Proof.
   move => ? ? ?.
-  move => [[N1 M1] [H1]] [[N2 M2] [H2]];
-  apply: ex_intro;
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (N2 \compn N1, M1 \compn M2)) _) => /= X;
+  move => [N1] [M1] [H1] [N2] [M2] [H2];
+  do !apply: ex_intro;
+  apply (@NaturalIsomorphisms _ _ _ _ (N2 \compn N1) (M1 \compn M2)) => /= X;
   apply: Isomorphisms => /=;
   case: (H1 X) => /= [H11 ?];
   case: (H2 X) => /= [? H22];
@@ -500,8 +499,8 @@ Proof.
   move => /= C D E F h i j.
   set L := @NaturalTransformation _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (natural_map (idn _)) (idn_map_naturality _).
   set R := @NaturalTransformation _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (natural_map (idn _)) (idn_map_naturality _).
-  apply: ex_intro;
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _).
+  do !apply: ex_intro;
+  apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
@@ -511,8 +510,8 @@ Proof.
   move => /= C D f.
   set L := @NaturalTransformation _ _ f (f \compf idf _) (natural_map (idn _)) (idn_map_naturality _).
   set R := @NaturalTransformation _ _ (f \compf idf _) f (natural_map (idn _)) (idn_map_naturality _).
-  apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _).
+  do !apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
@@ -522,21 +521,21 @@ Proof.
   move => /= C D f.
   set L := @NaturalTransformation _ _ f (idf _ \compf f) (natural_map (idn _)) (idn_map_naturality _).
   set R := @NaturalTransformation _ _ (idf _ \compf f) f (natural_map (idn _)) (idn_map_naturality _).
-  apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _).
+  do !apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: compm0.
 Defined.
 
 Lemma cats_comp_left : @Category.compatibility_left category _ composition_of_functors.
 Proof.
-  move => ? ? ? f f' g /= [] [] N M [H].
+  move => ? ? ? f f' g /= [N] [M] [H].
   set L := @NaturalTransformation _ _ (g \compf f) (g \compf f')
                                   (natural_map (g \compfn N)) (compfn_naturality _ _).
   set R := @NaturalTransformation _ _ (g \compf f') (g \compf f)
                                   (natural_map (g \compfn M)) (compfn_naturality _ _).
-  apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _) => X.
+  do !apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ L R) => X.
   apply: Isomorphisms => /=;
   (apply: Congruence.etrans;
    first by (apply/symP; apply pres_comp));
@@ -546,13 +545,13 @@ Defined.
 
 Lemma cats_comp_right : @Category.compatibility_right category _ composition_of_functors.
 Proof.
-  move => ? ? ? f g g' /= [] [] N M [H].
+  move => ? ? ? f g g' /= [N] [M] [H].
   set L := @NaturalTransformation _ _ (g \compf f) (g' \compf f)
                                   (natural_map (N \compnf f)) (compnf_naturality _ _).
   set R := @NaturalTransformation _ _ (g' \compf f) (g \compf f)
                                   (natural_map (M \compnf f)) (compnf_naturality _ _).
-  apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _ (fst (L, R)) _) => X;
+  do !apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ L R) => X;
   apply: Isomorphisms => /=;
   by case: (H (f X)).
 Defined.
@@ -707,7 +706,7 @@ End Axioms.
 Module Exports.
 Structure limit I C F :=
   Limit {
-      limit_object : _;
+      limit_object :> _;
       canonical_solution : _;
       universal_morphism : _;
       universality : @universality_axiom I C F limit_object canonical_solution universal_morphism;
@@ -738,10 +737,10 @@ Lemma limit_is_the_unique I C (F : Fun (I, C)) :
  forall (limL : limit F) (limL' : limit F), L limL == L limL'.
 Proof.
 move => limL limL' /=.
-apply: ex_intro.
+do !apply: ex_intro.
 set u := (@universal_morphism _ _ _ limL' _ (canonical_solution limL)).
 set u' := (@universal_morphism _ _ _ limL _ (canonical_solution limL')).
-apply (@Isomorphisms _ _ _ (fst (proj1_sig u, proj1_sig u')) _).
+apply (@Isomorphisms _ _ _ (proj1_sig u) (proj1_sig u')).
   apply (@add_loop I C F limL).
   move => A B g /=.
   apply/symP.
@@ -1050,83 +1049,94 @@ Canonical types_catType := Eval hnf in CatType Type types_catMixin.
 End Types.
 Notation types := types_catType.
 
-Require Import Coq.Logic.FunctionalExtensionality Coq.Logic.ClassicalChoice Coq.Logic.Classical_Pred_Type.
 Module Adjunction.
 Section Axioms.
 Variables C D : category.
 Variable F : Fun (C, D).
 Variable G : Fun (D, C).
 Variable n : forall X Y, Mor (F X, Y) -> Mor (X, G Y).
-Definition adjunction_axiom X Y :=
-    injective (fun g (x : Mor (F X, Y)) => @n X Y (g x))
-    /\ injective (fun g x => g (@n X Y x) : Mor (X,G Y)).
-Hypothesis separable : forall X Y (f : Mor (X, G Y)), decidable (exists w, @n X Y w = f).
-Lemma choice_as_section (A B : Type) :
-  forall (f : A -> B), (forall z, (exists w, f w = z)) ->
-      exists (g : B -> A), f \o g = ssrfun.id.
-Proof.
-move=> f Hf.
-have H: exists (g : { z : B | exists w, f w = z } -> A), forall x, proj1_sig x = f (g x).
- apply (choice (fun (x : { z : B | exists w, f w = z }) y => (proj1_sig x) = f y)).
- move=> [] x [] y Hx /=; apply: ex_intro; apply/esym; by apply Hx.
-case: H => g Hg; apply: ex_intro.
-apply: functional_extensionality => x.
-by apply/esym: (Hg (exist (fun z => exists w : A, f w = z) x (Hf x))). 
-Qed.
-Lemma pointwise_surj X Y :
+Local Definition adjunction_axiom X Y :=
+  { m : Mor (X, G Y) -> Mor (F X, Y) |
+    comp (@n X Y) m = ssrfun.id /\ comp m (@n X Y) = ssrfun.id }.
+Arguments adjunction_axiom /.
+Lemma injectivity X Y :
   adjunction_axiom X Y ->
-    (Mor (F X, Y) -> forall y, exists w : Mor (F X, Y), n w = y).
+  injective (fun g (x : Mor (F X, Y)) => @n X Y (g x))
+  /\ injective (fun g x => g (@n X Y x) : Mor (X,G Y)).
 Proof.
-move=> H st.
-case: H => HL HR.
-move=> y; apply not_all_not_ex => Hy.
- suff : exists w, w <> y. case=> w Hw.
- have: exists m : Mor (X, G Y) -> Mor (X, G Y),
-    forall w, ((exists z, (@n X Y) z = w) <-> m w = y).
-  apply not_all_not_ex => Hm.
-  apply: (Hm (fun f => if separable f then y else w)) => w''.
-  by case: (separable w'') => //=.
- case=> m Hm.
- have H': forall x, y = m (n x).
-  move=> x; move: (Hm (n x)) => {Hm} Hm;
-  have Hmi: exists z, n z = n x by apply: ex_intro; apply erefl.
-  case: Hm => Hm; by rewrite Hm.
- move: Hm; rewrite -(HR (fun _ => y) m);
-  last by apply functional_extensionality.
- move=> Hc; case: (Hc y) => _ {Hc} Hc.
- case: (Hc erefl) => {Hc} x res.
- apply: Hy; apply res.
-apply not_all_not_ex => Hw.
-apply: Hw; by apply: Hy.
-Qed.
-Lemma surj_inj X Y (st : Mor (F X, Y)) (m : Mor (X, G Y) -> Mor (F X, Y)) (H : adjunction_axiom X Y) :
-    comp (@n X Y) m = ssrfun.id -> comp m (@n X Y) = ssrfun.id.
-Proof.
-move=> H'.
-case: H => HL HR.
-apply: HL.
-apply: functional_extensionality => x /=.
-apply: (equal_f H' (n x)).
-Qed.
-Lemma equiv_statement X Y (st : Mor (F X, Y)) :
-  adjunction_axiom X Y <->
-  exists (m : Mor (X, G Y) -> Mor (F X, Y)),
-    comp (@n X Y) m = ssrfun.id /\ comp m (@n X Y) = ssrfun.id.
-Proof.
-split; last first.
 case=> m [] HL HR. split => x y H'.
  + suff: ssrfun.id \o x = ssrfun.id \o y => //.
-   apply functional_extensionality=> t; rewrite -HR.
-   by apply equal_f, (f_equal m# H').
- + suff: x \o ssrfun.id = y \o ssrfun.id => //. 
-   apply functional_extensionality=> t; rewrite -HL.
-   by apply equal_f, (f_equal (#m) H').
-move=> H.
-case: (choice_as_section (@pointwise_surj X Y H st)) => m Hm.
-apply (ex_intro _ m).
-split => //.
-by apply surj_inj.
+   by rewrite -HR; apply (f_equal m# H').
+ + suff: x \o ssrfun.id = y \o ssrfun.id => //.
+    by rewrite -HL; apply (f_equal (#m) H').
 Qed.
+(* Hypothesis separable : forall X Y f, decidable (exists w, @n X Y w = f). *)
+(* Lemma choice_as_section (A B : Type) : *)
+(*   forall (f : A -> B), (forall z, (exists w, f w = z)) -> *)
+(*       exists (g : B -> A), f \o g = ssrfun.id. *)
+(* Proof. *)
+(* move=> f Hf. *)
+(* have H: exists (g : { z : B | exists w, f w = z } -> A), forall x, proj1_sig x = f (g x). *)
+(*  apply (choice (fun (x : { z : B | exists w, f w = z }) y => (proj1_sig x) = f y)). *)
+(*  move=> [] x [] y Hx /=; apply: ex_intro; apply/esym; by apply Hx. *)
+(* case: H => g Hg; apply: ex_intro. *)
+(* apply: functional_extensionality => x. *)
+(* by apply/esym: (Hg (exist (fun z => exists w : A, f w = z) x (Hf x))).  *)
+(* Qed. *)
+(* Lemma pointwise_surj X Y : *)
+(*   adjunction_axiom X Y -> *)
+(*     (Mor (F X, Y) -> forall y, exists w : Mor (F X, Y), n w = y). *)
+(* Proof. *)
+(* move=> H st. *)
+(* case: H => HL HR. *)
+(* move=> y; apply not_all_not_ex => Hy. *)
+(*  suff : exists w, w <> y. case=> w Hw. *)
+(*  have: exists m : Mor (X, G Y) -> Mor (X, G Y), *)
+(*     forall w, ((exists z, (@n X Y) z = w) <-> m w = y). *)
+(*   apply not_all_not_ex => Hm. *)
+(*   apply: (Hm (fun f => if separable f then y else w)) => w''. *)
+(*   by case: (separable w'') => //=. *)
+(*  case=> m Hm. *)
+(*  have H': forall x, y = m (n x). *)
+(*   move=> x; move: (Hm (n x)) => {Hm} Hm; *)
+(*   have Hmi: exists z, n z = n x by apply: ex_intro; apply erefl. *)
+(*   case: Hm => Hm; by rewrite Hm. *)
+(*  move: Hm; rewrite -(HR (fun _ => y) m); *)
+(*   last by apply functional_extensionality. *)
+(*  move=> Hc; case: (Hc y) => _ {Hc} Hc. *)
+(*  case: (Hc erefl) => {Hc} x res. *)
+(*  apply: Hy; apply res. *)
+(* apply not_all_not_ex => Hw. *)
+(* apply: Hw; by apply: Hy. *)
+(* Qed. *)
+(* Lemma surj_inj X Y (st : Mor (F X, Y)) (m : Mor (X, G Y) -> Mor (F X, Y)) (H : adjunction_axiom X Y) : *)
+(*     comp (@n X Y) m = ssrfun.id -> comp m (@n X Y) = ssrfun.id. *)
+(* Proof. *)
+(* move=> H'. *)
+(* case: H => HL HR. *)
+(* apply: HL. *)
+(* apply: functional_extensionality => x /=. *)
+(* apply: (equal_f H' (n x)). *)
+(* Qed. *)
+(* Lemma equiv_statement X Y (st : Mor (F X, Y)) : *)
+(*   adjunction_axiom X Y <-> *)
+(*   exists (m : Mor (X, G Y) -> Mor (F X, Y)), *)
+(*     comp (@n X Y) m = ssrfun.id /\ comp m (@n X Y) = ssrfun.id. *)
+(* Proof. *)
+(* split; last first. *)
+(* case=> m [] HL HR. split => x y H'. *)
+(*  + suff: ssrfun.id \o x = ssrfun.id \o y => //. *)
+(*    apply functional_extensionality=> t; rewrite -HR. *)
+(*    by apply equal_f, (f_equal m# H'). *)
+(*  + suff: x \o ssrfun.id = y \o ssrfun.id => //.  *)
+(*    apply functional_extensionality=> t; rewrite -HL. *)
+(*    by apply equal_f, (f_equal (#m) H'). *)
+(* move=> H. *)
+(* case: (choice_as_section (@pointwise_surj X Y H st)) => m Hm. *)
+(* apply (ex_intro _ m). *)
+(* split => //. *)
+(* by apply surj_inj. *)
+(* Qed. *)
 End Axioms.
 Module Exports.
 Structure adjunction C D :=
@@ -1137,6 +1147,178 @@ Structure adjunction C D :=
       adj_map : _;
       adj_axiom : forall X Y, @adjunction_axiom C D left_adj right_adj adj_map X Y;
     }.
+Coercion triple_of_adjunction C D (a : adjunction C D) := (left_adj a, right_adj a, @adj_map C D a).
+Variables C D I : category.
+Variable a : adjunction C D.
+Variable d : Fun(I, C).
+Variable limd : limit d.
+Variable lima : limit (a.1.1 \compf d).
+Arguments compfm /.
+Arguments compfo /.
+(* Arguments compm /. *)
+Lemma adjKL :
+  a.1.1 \compf a.1.2 \compf a.1.1 == a.1.1.
+Proof.
+case: a => F G n aa /=.
+set N := @NaturalTransformation _ _ F (F \compf G \compf F) (fun X => 'F (@n X (F X) id)).
+set M := @NaturalTransformation _ _ (F \compf G \compf F) F (fun X => (proj1_sig (aa (G (F X)) (F X)) id)).
+do !apply: ex_intro.
+apply: (@NaturalIsomorphisms _ _ _ _ (M _) (N _)).
+move=> X X' f.
+case: (aa (G (F X)) (F X)) => fX [] Xl Xr.
+case: (aa (G (F X')) (F X')) => fX' [] X'l X'r /=.
+
+have: 'F (@n X' (F X') id) \compm fX' id = 'F (@n _ _ (fX' id)).
+case: (aa (G (F X')) (F (G (F X')))) => fX'' [] X''l X''r.
+
+have H: n (G (F X')) (F (G (F X'))) (' F (n X' (F X') id) \compm fX' id) = n (G (F X')) (F (G (F X'))) (' F (n (G (F X')) (F X') (fX' id))).
+
+move: (f_equal (fun e => e 
+               ) X'r) => <-.
+                                                                  
+       (fun _ : Mor (F (G (F X')), F (G (F X'))) => ' F
+case: (injectivity (aa (G (F X')) (F (G (F X'))))) => ml mr.
+move: (ml (fun _ => ' F (n X' (F X') id) \compm fX' id) (fun _ =>  ' F (n (G (F X')) (F X') (fX' id)))) => ML.
+apply: mr.
+About injectivity.
+case: (aa (G (F X')) (F (G (F X')))) => m /= [] ml mr.
+congr ('F).
+      hhid.
+Check 
+
+Check (aa (G (F X')) (F (G (F X'))
+     : Mor (F (G (F X')), F (G (F X')))
+
+move: (f_equal (fun e => e (fX' id)) X'r) => <-.
+Check ('G (' F (n X' (F X') id))).
+                           (fX' id \compm ' F (' G (' F f)))) X''r) => /=.
+Check .
+case: (aa (G (F X)) (F X')) => fX'' [] X''l X''r.
+have: fX' id \compm ' F (' G (' F f)) = fX'' ('G ('F f)).
+move: (f_equal (fun e => 'F (e (' G (' F f)))) X''l) => <- /=.
+set A := fX'' (' G (' F f)).
+Check (fX' id).
+F X', F (G (F X'))
+move: (f_equal (fun e => e (fX' id \compm ' F (' G (' F f)))) X''r) => /=.
+Check (' F (n (G (F X)) (F X') (fX'' ('G ('F f))))).
+                           (fX' id \compm ' F (' G (' F f)))) X''r) => <-.hh
+Check (fX'' (' G (' F f))).
+congr fX''.
+
+have: n (G (F X)) (F X') (fX' id \compm ' F (' G (' F f))) = ' G (' F f).
+
+move: (f_equal (fun e => e (fX' id \compm ' F (' G (' F f)))) X''r) => <- /=.
+(fX' id \compm ' F (' G (' F f)))
+                           (' G (' F f))) X''r) => /=.
+move: (f_equal (fun e => e ('G ('F f))) X''l) => <- /=.
+
+      @n (G (F X)) (F X') (' F f \compm fX id).
+Check (@n (G (F X)) (F X') (fX' id \compm ' F (' G (' F f)))).
+
+Check 
+move: (f_equal (fun e => e (fX' id \compm ' F (' G (' F f)))) X''r) => /=.
+      ).
+
+     : Mor 
+  Check 
+Check (fX id \compm ' F (' G (' F id))) == fX id.
+apply: Congruence.suff_eq.
+Check ('F ('G ('F id))).
+Check (fX id).
+
+move: (f_equal (fun e => e id) Xl) => <- /=.
+
+Check (fX (n (G (F X)) (F X) (fX id))).
+case: (aa X (F X')) => ?.
+         (G (F X)) (F X)) => fX [] Xl Xr.
+case: (injectivity (aa (G (F X)) (F X))) => Il Ir.
+move: (f_equal (fun e => e (fX' id)) X'r) => <- /=.
+apply: Ir.
+Check (fX' id \compm ' F (' G (' F f))).
+rewrite !/comp.
+Check (' F (' G (' F f))).
+Check (f_equal _ X'r).
+have: n (G (F X')) (F X') (fX' id) = id.
+rewrite -X'l.
+move: X'l X'r => /=.
+move:(equal_f X'r).
+rewrite /compm.
+rewrite /compfm.
+apply: Isomorphisms.
+move: (H' X) => /=.
+move: (H X) => /=.
+move=> X Y f.
+case: (aa X (F Y))=> m [] /= mL mR.
+
+Print NaturalTransformation.
+                            (fun X => (@Isomorphisms _ _ _  (@n X (F X) id) _ _ _))).
+  Check (@NaturalTransformation _ _ F (F \compf G \compf F) (fun X => 'F (@n X (F X) id)) _).
+                                                                m(fun X => (@n X (F X) id)) _.
+  N
+Print ex.
+Check(fun X =>
+| ex_intro m _ => @Isomorphisms _ _ _ _ (m id)
+end).
+case:  => m [] mL mR.
+Check (NaturalIsomorphisms (fun X => (@Isomorphisms _ _ _  (@n X (F X) id) _ _ _))).
+apply (fun @Isomorphisms _ _ _ _ ((fun X => (m id)) X)).
+(forall X : C, isomorphisms (N X) (M X))
+Print Isomorphism.NaturalIsomorphisms.
+About NaturalIsomorphisms .
+apply: NaturalIsomorphisms => X.
+Check ((fun X => (m id)) X).
+move: (m id).
+apply: Isomorphisms.
+apply: Congruence.suff_eq.
+apply: mL.
+Check ('F (@n X (F X) id)).
+Check ('F (@n X (F X) id)).
+apply (@Isomorphisms _ _ _ (fst (_, ('F (@n X (F X) id))))
+                     (snd ('F (@n X (F X) id), _))) => /=.
+rewrite /=.
+move: (fun X => (@n (G X) (F (G X)) id)).
+Check ).
+                   (G X) (F (G X)) id)).
+Check (fun X => (@n (G (F X)) (F X))).
+Check (fun X => (@n (G (F X)) (F X) (@Category.id _ _ (G (F X))))).
+                   (F X) (G (F X)) id)).
+case: (aa X (F X))=> Hf1 Hf2.
+case: (aa (G (F X)) (F X)) => Hgf1 Hgf2.
+move: (Hgf1 (@n X
+         ssrfun.id ssrfun.id).
+move: (fun X => 'F (@n (G X) (F (G X)) id)).
+Check (fun f => 'G f).
+Check 'G.
+move: (fun X => 
+                            (@n (G X) X f))).
+                    (F (G X)) id)).
+  move=> X.
+  mov
+move: (n Ld (F Ld) id).
+      pres_limit :
+  a.1.1 limd == limit_object lima.
+Lemma adj_pres_limit :
+  a.1.1 limd == limit_object lima.
+Proof.
+case: limd => /= Ld cd ud uda.
+case: lima => /= La ca ua uaa.
+case: a cd ud uda ca ua uaa => F G n aa /= cd ud uda ca ua uaa.
+move: uda => /=.
+rewrite /Limit.universality_axiom.
+have: F Ld 
+  Ld = solution_of_diagram
+case: (aa Ld (F Ld)) => /= Ha1 Ha2.
+Check (G (F Ld)).
+move: (Ha1 ssrfun.id (fun _ => id)) => /=.
+move: (n Ld (F Ld) id).
+rewrite /adjunction_axiom.
+move: cd 
+
+Print limit_is_the_unique.
+apply: limit_is_the_unique.
+Check (limit_object (limit d)).
+  
+  
 End Exports.
 End Adjunction.
 Export Adjunction.Exports.
