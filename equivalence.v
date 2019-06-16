@@ -3,6 +3,8 @@ From mathcomp Require Import all_ssreflect.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+Set Universe Polymorphism.
+Set Polymorphic Inductive Cumulativity.
 
 Module Equivalence.
 
@@ -112,7 +114,7 @@ Proof. by move=> ? ? ? /eqP -> /eqP ->. Qed.
 Lemma eq_reflP : @Equivalence.reflexivity T eq_op.
 Proof. by []. Qed.
 Definition eq_equivMixin := EquivMixin eq_symP eq_transP eq_reflP.
-Canonical eq_equivType := EquivType (Equality.sort T) eq_equivMixin.
+Canonical eq_equivType := Eval hnf in EquivType (Equality.sort T) eq_equivMixin.
 End EqType.
 
 Section Prop'.
@@ -123,12 +125,13 @@ Proof. move=> ? ? ? [] ? ? [] ? ?. split; by auto. Qed.
 Lemma prop_reflP : @Equivalence.reflexivity Prop iff.
 Proof. by []. Qed.
 Canonical prop_equivMixin := EquivMixin prop_symP prop_transP prop_reflP.
-Canonical prop_equivType := EquivType Prop prop_equivMixin.
+Canonical prop_equivType := Eval hnf in EquivType Prop prop_equivMixin.
 End Prop'.
 
 Section Map.
-Variable d : Type.
-Variable v : equivType.
+Variable d v : Type.
+Variable equiv : Equivalence.mixin_of v.
+Local Notation "f == g" := (@equiv_op (EquivType _ equiv) f g).
 Definition map_op (f : d -> v) (g : d -> v) :=
   forall z, f z == g z.
 Lemma map_symP : Equivalence.symmetricity map_op.
@@ -155,5 +158,25 @@ Proof. move=> ? ? ? H1 H2. by apply: etrans; first apply H1. Qed.
 Lemma eqe_reflP : Equivalence.reflexivity eqe_op.
 Proof. move=> f; by apply erefl. Qed.
 Definition eqe_equivMixin := EquivMixin eqe_symP eqe_transP eqe_reflP.
-Canonical eqe_equivType := Eval hnf in EquivType T eqe_equivMixin.
+Definition eqe_equivType := Eval hnf in EquivType T eqe_equivMixin.
 End eq.
+
+Section PullBack.
+Variable d v : Type.
+Variable equiv : Equivalence.mixin_of v.
+Variable map : d -> v.
+Local Notation "f == g" := (@equiv_op (EquivType _ equiv) f g).
+Definition pull_op (f : d) (g : d) := map f == map g.
+Lemma pull_symP : Equivalence.symmetricity pull_op.
+Proof. move=> f g; split => /= H; apply/symP; by apply: H. Qed.
+Lemma pull_transP : Equivalence.transitivity pull_op.
+Proof.
+move=> ? ? ? H1 H2.
+apply/transP; first by apply H1.
+apply: H2; apply/reflP.
+Qed.
+Lemma pull_reflP : Equivalence.reflexivity pull_op.
+Proof. move=> f; apply/reflP. Qed.
+Definition pull_equivMixin := EquivMixin pull_symP pull_transP pull_reflP.
+Canonical pull_equivType := Eval hnf in EquivType d pull_equivMixin.
+End PullBack.

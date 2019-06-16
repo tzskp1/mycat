@@ -1,4 +1,5 @@
 -arg "-w -notation-overridden"
 equivalence.v
-category.v
+fundamental.v
+constructions.v
 -R . mycat
