@@ -162,11 +162,10 @@ Definition eqe_equivType := Eval hnf in EquivType T eqe_equivMixin.
 End eq.
 
 Section PullBack.
-Variable d v : Type.
+Variables d v : Type.
 Variable equiv : Equivalence.mixin_of v.
 Variable map : d -> v.
-Local Notation "f == g" := (@equiv_op (EquivType _ equiv) f g).
-Definition pull_op (f : d) (g : d) := map f == map g.
+Definition pull_op (f : d) (g : d) := @equiv_op (EquivType _ equiv) (map f) (map g).
 Lemma pull_symP : Equivalence.symmetricity pull_op.
 Proof. move=> f g; split => /= H; apply/symP; by apply: H. Qed.
 Lemma pull_transP : Equivalence.transitivity pull_op.
@@ -180,3 +179,23 @@ Proof. move=> f; apply/reflP. Qed.
 Definition pull_equivMixin := EquivMixin pull_symP pull_transP pull_reflP.
 Canonical pull_equivType := Eval hnf in EquivType d pull_equivMixin.
 End PullBack.
+
+Section Prod.
+Variables f s : Type.
+Variable fe : Equivalence.mixin_of f.
+Variable se : Equivalence.mixin_of s.
+Definition prod_op (p : f * s) (q : f * s) :=
+  @equiv_op (EquivType _ fe) (fst p) (fst q) /\ @equiv_op (EquivType _ se) (snd p) (snd q).
+Lemma prod_symP : Equivalence.symmetricity prod_op.
+Proof. by move=> [f1 f2] [g1 g2]; split; case => /= H1 H2; split; apply/symP. Qed.
+Lemma prod_transP : Equivalence.transitivity prod_op.
+Proof.
+move=> [??] [??] [??] [H11 H12] [H21 H22]; split.
+by apply/transP; first by apply: H11.
+by apply/transP; first by apply: H12.
+Qed.
+Lemma prod_reflP : Equivalence.reflexivity prod_op.
+Proof. move=> [] p q; split; apply/reflP. Qed.
+Definition prod_equivMixin := EquivMixin prod_symP prod_transP prod_reflP.
+Definition prod_equivType := Eval hnf in EquivType (f * s) prod_equivMixin.
+End Prod.

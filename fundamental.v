@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import equivalence Coq.Program.Equality.
+Require Import equivalence.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -210,21 +210,54 @@ Definition preserve_equivalence :=
   forall A B (f f' : Mor (A, B)),
     f == f' -> map_of_morphisms f == map_of_morphisms f'.
 End Axioms.
-Module Exports.
-Structure functor dom cod :=
-  Functor {
+
+Structure mixin_of dom cod :=
+  Mixin {
       map_of_objects :> _;
       map_of_morphisms : _;
       id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
       pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
       pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
     }.
-Notation "'Fun' ( C , D )" := (functor C D).
-Notation "' F " := (@map_of_morphisms _ _ F _ _) (at level 1).
+
+Local Notation class_of := mixin_of (only parsing).
+
+Section ClassDef.
+Structure type := Pack {dom; cod; _: class_of dom cod; _ : Type}.
+Variables (domT codT : category) (cT : type).
+Definition class := let: Pack _ _ c _ := cT return class_of (dom cT) (cod cT) in c.
+Definition pack c := @Pack domT codT c (domT -> codT).
+Definition clone
+           (c : mixin_of domT codT)
+           (_ : dom cT -> domT)
+           (_ : cod cT -> codT)
+           (_ : phant_id (pack c) cT) := pack c.
+End ClassDef.
+
+Definition app_fun dom cod (f : mixin_of dom cod) := map_of_objects f.
+Definition app_fun_mor dom cod (f : mixin_of dom cod) := map_of_morphisms f.
+
+Module Exports.
+Notation "' F" := (@app_fun_mor _ _ F _ _) (at level 1).
+Coercion class: type >-> mixin_of.
+Coercion app_fun: mixin_of >-> Funclass.
+Notation functor := type.
+Notation FunMixin := Mixin.
+Notation FunType D C m := (@pack D C m).
+Notation id_id := id_id.
+Notation pres_comp := pres_comp.
+Notation pres_equiv := pres_equiv.
+Notation "[ 'FunMixin' 'of' T 'to' S ]" := (class _ : mixin_of T S)
+  (at level 0, format "[ 'FunMixin'  'of'  T 'to' S ]") : form_scope.
+Notation "[ 'functor' 'of' T 'to' S 'for' C ]" := (@clone T S C _ idfun idfun ssrfun.id)
+  (at level 0, format "[ 'functor'  'of'  T  'to' S 'for'  C ]") : form_scope.
+Notation "[ 'functor' 'of' T 'to' S ]" := (@clone T S _ _ ssrfun.id ssrfun.id ssrfun.id)
+  (at level 0, format "[ 'functor'  'of'  T 'to' S ]") : form_scope.
+Notation "'Fun' ( C , D )" := (@mixin_of C D).
 Section Composition.
 Variables (C D E : category) (G : Fun (D, E)) (F : Fun (C, D)).
 Definition compfo x := G (F x).
-Definition compfm A B (f : Mor (A, B)) := 'G ('F f).
+Definition compfm A B (f : Mor (A, B)) := 'G (' F f).
 Lemma compf_id_id : @maps_identity_to_identity _ _ compfo compfm.
 Proof.
 move=> ?.
@@ -244,29 +277,28 @@ Proof.
 move=>? ? ? ? ?;
  by do !apply: pres_equiv.
 Defined.
-Definition composition_of_functors :=
-  @Functor _ _
+Definition compf :=
+  @FunMixin _ _
           compfo
           compfm
           compf_id_id
           compf_pres_comp
           compf_pres_equiv.
 End Composition.
-Notation "F \compf G" := (composition_of_functors F G) (at level 40).
+Notation "F \compf G" := (compf F G) (at level 40).
 Section Identity.
 Variables C : category.
 Definition idfm (A B : Ob C) (f : Mor (A, B)) := f.
 Definition idf_id_id := (fun _  => reflP) : maps_identity_to_identity idfm.
 Definition idf_pres_comp := (fun _ _ _ _ _ => reflP) : preserve_composition idfm.
 Definition idf_pres_equiv := (fun _ _ _ _ => ssrfun.id) : preserve_equivalence idfm.
-Definition identity_of_functor :=
-  @Functor _ _ _
+Definition idf :=
+  @FunMixin _ _ _
           idfm
           idf_id_id
           idf_pres_comp
           idf_pres_equiv.
 End Identity.
-Notation idf := identity_of_functor.
 End Exports.
 End Functor.
 Export Functor.Exports.
@@ -280,13 +312,39 @@ Arguments map {X}.
 Definition naturality_axiom :=
   forall A A' (f : Mor (A, A')), map \compm 'F f == 'G f \compm map.
 End Axioms.
-Module Exports.
-Structure natural_transformation {C D} (F G : Fun (C, D)) :=
-  NaturalTransformation {
+
+Structure mixin_of C D (F G : Fun (C, D)) :=
+  Mixin {
       natural_map :> _;
       naturality : @naturality_axiom C D F G natural_map;
     }.
-Notation "'Nat' ( M , N )" := (natural_transformation M N) (at level 5).
+
+Local Notation class_of := mixin_of (only parsing).
+
+Section ClassDef.
+Structure type := Pack {dom; cod; domf; codf; _ : @class_of dom cod domf codf; _ : Type}.
+Variables (domT codT : category) (cT : type).
+Definition class := let: Pack _ _ _ _ c _ := cT return @class_of (dom cT) (cod cT) (domf cT) (codf cT) in c.
+Definition pack c := @Pack _ _ (domf cT) (codf cT) c (dom cT * cod cT).
+Definition clone
+           (c : @mixin_of _ _ (domf cT) (codf cT))
+           (_ : dom cT -> domT)
+           (_ : cod cT -> codT)
+           (_ : phant_id (pack c) cT) := pack c.
+End ClassDef.
+
+Definition app_nat dom cod f g (n : @mixin_of dom cod f g) := natural_map n.
+
+Module Exports.
+Notation "'Nat' ( M , N )" := (@mixin_of _ _ M N) (at level 5).
+Coercion class: type >-> mixin_of.
+Coercion app_nat: mixin_of >-> Funclass.
+Notation natural_transformation := type.
+Notation NatMixin := Mixin.
+Notation NatType D C F G m := (@pack D C F G m).
+Notation naturality := naturality.
+Notation "[ 'NatMixin' 'of' T 'to' S ]" := (class _ : @mixin_of _ _ T S)
+  (at level 0, format "[ 'NatMixin'  'of'  T 'to' S ]") : form_scope.
 Section Composition.
 Variables C D : category.
 Variables F G H : Fun (C, D).
@@ -307,10 +365,10 @@ apply: Congruence.etrans;
  first (apply/symP; by apply: compmA).
 by apply/reflP.
 Defined.
-Definition composition_of_natural_transformations :=
-  @NaturalTransformation _ _ _ _ compn_map compn_naturality.
+Definition compn :=
+  @NatMixin _ _ _ _ compn_map compn_naturality.
 End Composition.
-Notation "N \compn M" := (composition_of_natural_transformations N M)  (at level 40).
+Notation "N \compn M" := (compn N M)  (at level 40).
 Section Identity.
 Variables C D : category.
 Variable F : Fun (C, D).
@@ -319,10 +377,9 @@ Definition idn_map_naturality :=
   (fun (A A' : Ob C) (f : Mor (A, A')) =>
      Congruence.etrans ([eta iffRL symP] (comp0m (' F f))) (compm0 (' F f)))
   : naturality_axiom idn_map.
-Definition identity_natural_transformation :=
-  @NaturalTransformation _ _ _ _ idn_map idn_map_naturality.
+Definition idn :=
+  @NatMixin _ _ _ _ idn_map idn_map_naturality.
 End Identity.
-Notation idn := identity_natural_transformation.
 Section Composition.
 Variables C D E : category.
 Variables F G : Fun (C, D).
@@ -340,10 +397,10 @@ first (apply/symP; by apply pres_comp).
 apply pres_equiv.
 apply/symP; by apply naturality.
 Defined.
-Definition composition_of_natural_transformation_functor :=
-  @NaturalTransformation C E (H \compf F) (H \compf G) compfn_map compfn_naturality.
+Definition compfn :=
+  @NatMixin C E (H \compf F) (H \compf G) compfn_map compfn_naturality.
 End Composition.
-Notation "F \compfn N" := (composition_of_natural_transformation_functor F N)  (at level 40).
+Notation "F \compfn N" := (compfn F N)  (at level 40).
 Section Composition.
 Variables C D E : category.
 Variables F G : Fun (D, E).
@@ -355,17 +412,20 @@ Proof.
 move => ? ? ? /=.
 apply: naturality.
 Defined.
-Definition composition_of_functor_natural_transformation :=
-  @NaturalTransformation C E (F \compf H) (G \compf H) compnf_map compnf_naturality.
+Definition compnf :=
+  @NatMixin C E (F \compf H) (G \compf H) compnf_map compnf_naturality.
 End Composition.
-Notation "N \compnf F" := (composition_of_functor_natural_transformation N F)  (at level 40).
+Notation "N \compnf F" := (compnf N F)  (at level 40).
 End Exports.
 End NaturalTransformation.
 Export NaturalTransformation.Exports.
 
 Module Isomorphism.
-Inductive isomorphisms {C} {A B: Ob C} (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
+Inductive isomorphisms C (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
   Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
+
+Arguments isomorphisms {_ _ _} _ _.
+Arguments Isomorphisms {_ _ _} _ _ _ _.
 
 Inductive natural_isomorphisms
           {C D} {F G : Fun (C, D)}
@@ -505,8 +565,8 @@ Export Isomorphism.Exports.
 Lemma compf0 C D (f : Fun (C, D)) :
   @equiv_op (funs_equivType C D) f (f \compf (@idf C)).
 Proof.
-  set L := @NaturalTransformation _ _ f (f \compf idf _) (natural_map (idn _)) (idn_map_naturality _).
-  set R := @NaturalTransformation _ _ (f \compf idf _) f (natural_map (idn _)) (idn_map_naturality _).
+  set L := @NatMixin _ _ f (f \compf idf _) (idn _) (idn_map_naturality _).
+  set R := @NatMixin _ _ (f \compf idf _) f (idn _) (idn_map_naturality _).
   do !apply: ex_intro.
   apply (@NaturalIsomorphisms _ _ _ _ L R).
   move => X; apply: Isomorphisms => /=;
@@ -516,8 +576,8 @@ Qed.
 Lemma comp0f C D (f : Fun (C, D)) :
   @equiv_op (funs_equivType C D) f ((@idf D) \compf f).
 Proof.
-  set L := @NaturalTransformation _ _ f (idf _ \compf f) (natural_map (idn _)) (idn_map_naturality _).
-  set R := @NaturalTransformation _ _ (idf _ \compf f) f (natural_map (idn _)) (idn_map_naturality _).
+  set L := @NatMixin _ _ f (idf _ \compf f) (idn _) (idn_map_naturality _).
+  set R := @NatMixin _ _ (idf _ \compf f) f (idn _) (idn_map_naturality _).
   do !apply: ex_intro.
   apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;

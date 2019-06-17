@@ -8,36 +8,36 @@ Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 
 Section Cats.
-Lemma cats_associativity : @Category.associativity_of_morphisms category _ composition_of_functors funs_equivMixin.
+Lemma cats_associativity : @Category.associativity_of_morphisms category _ compf funs_equivMixin.
 Proof.
   move => /= C D E F h i j.
-  set L := @NaturalTransformation _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (natural_map (idn _)) (idn_map_naturality _).
-  set R := @NaturalTransformation _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (natural_map (idn _)) (idn_map_naturality _).
+  set L := @NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (idn _) (idn_map_naturality _).
+  set R := @NatMixin _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (idn _) (idn_map_naturality _).
   do !apply: ex_intro;
   apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
 
-Lemma cats_compm0 : @Category.identity_morphism_is_right_identity category _ idf composition_of_functors funs_equivMixin.
+Lemma cats_compm0 : @Category.identity_morphism_is_right_identity category _ idf compf funs_equivMixin.
 Proof.
   move => /= C D f.
   by apply: compf0.
 Defined.
 
-Lemma cats_comp0m : @Category.identity_morphism_is_left_identity category _ idf composition_of_functors funs_equivMixin.
+Lemma cats_comp0m : @Category.identity_morphism_is_left_identity category _ idf compf funs_equivMixin.
 Proof.
   move => /= C D f.
   by apply: comp0f.
 Defined.
 
-Lemma cats_comp_left : @Category.compatibility_left category _ composition_of_functors funs_equivMixin.
+Lemma cats_comp_left : @Category.compatibility_left category _ compf funs_equivMixin.
 Proof.
   move => ? ? ? f f' g /= [N] [M] [H].
-  set L := @NaturalTransformation _ _ (g \compf f) (g \compf f')
-                                  (natural_map (g \compfn N)) (compfn_naturality _ _).
-  set R := @NaturalTransformation _ _ (g \compf f') (g \compf f)
-                                  (natural_map (g \compfn M)) (compfn_naturality _ _).
+  set L := @NatMixin _ _ (g \compf f) (g \compf f')
+                                  (g \compfn N) (compfn_naturality _ _).
+  set R := @NatMixin _ _ (g \compf f') (g \compf f)
+                                  (g \compfn M) (compfn_naturality _ _).
   do !apply: ex_intro.
   apply (@NaturalIsomorphisms _ _ _ _ L R) => X.
   apply: Isomorphisms => /=;
@@ -47,13 +47,13 @@ Proof.
   apply: pres_equiv; by case: (H X).
 Defined.
 
-Lemma cats_comp_right : @Category.compatibility_right category _ composition_of_functors funs_equivMixin.
+Lemma cats_comp_right : @Category.compatibility_right category _ compf funs_equivMixin.
 Proof.
   move => ? ? ? f g g' /= [N] [M] [H].
-  set L := @NaturalTransformation _ _ (g \compf f) (g' \compf f)
-                                  (natural_map (N \compnf f)) (compnf_naturality _ _).
-  set R := @NaturalTransformation _ _ (g' \compf f) (g \compf f)
-                                  (natural_map (M \compnf f)) (compnf_naturality _ _).
+  set L := @NatMixin _ _ (g \compf f) (g' \compf f)
+                                  (N \compnf f) (compnf_naturality _ _).
+  set R := @NatMixin _ _ (g' \compf f) (g \compf f)
+                                  (M \compnf f) (compnf_naturality _ _).
   do !apply: ex_intro.
   apply (@NaturalIsomorphisms _ _ _ _ L R) => X;
   apply: Isomorphisms => /=;
@@ -109,25 +109,25 @@ Notation pushout := FC_catType.
 
 Section Funs.
 Variable C D : category.
-Lemma funs_associativity : @Category.associativity_of_morphisms _ _ (@composition_of_natural_transformations C D) (@nats_equivMixin C D).
+Lemma funs_associativity : @Category.associativity_of_morphisms _ _ (@compn C D) (@nats_equivMixin C D).
 Proof.
   move => C' D' E F h i j X /=.
   apply compmA.
 Defined.
 
-Lemma funs_compm0 : @Category.identity_morphism_is_right_identity _ _ (@idn C D) (@composition_of_natural_transformations C D) (@nats_equivMixin C D).
+Lemma funs_compm0 : @Category.identity_morphism_is_right_identity _ _ (@idn C D) (@compn C D) (@nats_equivMixin C D).
 Proof.
   move => C' D' f X.
   apply compm0.
 Defined.
 
-Lemma funs_comp0m : @Category.identity_morphism_is_left_identity _ _ (@idn C D) (@composition_of_natural_transformations C D) (@nats_equivMixin C D).
+Lemma funs_comp0m : @Category.identity_morphism_is_left_identity _ _ (@idn C D) (@compn C D) (@nats_equivMixin C D).
 Proof.
   move => C' D' f X.
   apply comp0m.
 Defined.
 
-Lemma funs_comp_left : @Category.compatibility_left _ _ (@composition_of_natural_transformations C D) (@nats_equivMixin C D).
+Lemma funs_comp_left : @Category.compatibility_left _ _ (@compn C D) (@nats_equivMixin C D).
 Proof.
   move => ? ? ? f f' g /= H X.
   apply comp_left.
@@ -135,7 +135,7 @@ Proof.
   apply H.
 Defined.
 
-Lemma funs_comp_right : @Category.compatibility_right _ _ (@composition_of_natural_transformations C D) (@nats_equivMixin C D).
+Lemma funs_comp_right : @Category.compatibility_right _ _ (@compn C D) (@nats_equivMixin C D).
 Proof.
   move => ? ? ? f f' g /= H X.
   apply comp_right.
@@ -192,12 +192,12 @@ Notation "'Op' C" := (opposite_category C) (at level 1).
 
 Section Opposite.
 Variable C : Ob cats.
-Local Notation F := (@Functor (Op (Op C)) C ssrfun.id (fun x y f => f) _ _ _ : Mor(Op (Op C), C)).
-Local Notation G := (@Functor C (Op (Op C)) ssrfun.id (fun x y f => f) _ _ _ : Mor(C, Op (Op C))).
-Local Notation N := (@NaturalTransformation _ _ (G \compf F) (idf Op (Op C)) (fun X : Ob (Op (Op C)) => id : Mor ((G \compf F) X, (idf Op (Op C)) X)) _).
-Local Notation M := (@NaturalTransformation _ _ (idf Op (Op C)) (G \compf F) (fun X : Ob C => id : Mor ((idf Op (Op C)) X, (G \compf F) X)) _).
-Local Notation N' := (@NaturalTransformation _ _ (F \compf G) (idf C) (fun X : Ob C => id : Mor ((F \compf G) X, (idf C) X)) _).
-Local Notation M' := (@NaturalTransformation _ _ (idf C) (F \compf G) (fun X : Ob (Op (Op C)) => id : Mor ((idf C) X, (F \compf G) X)) _).
+Local Notation F := (@FunMixin (Op (Op C)) C ssrfun.id (fun x y f => f) _ _ _ : Mor(Op (Op C), C)).
+Local Notation G := (@FunMixin C (Op (Op C)) ssrfun.id (fun x y f => f) _ _ _ : Mor(C, Op (Op C))).
+Local Notation N := (@NatMixin _ _ (G \compf F) (idf Op (Op C)) (fun X : Ob (Op (Op C)) => id : Mor ((G \compf F) X, (idf Op (Op C)) X)) _).
+Local Notation M := (@NatMixin _ _ (idf Op (Op C)) (G \compf F) (fun X : Ob C => id : Mor ((idf Op (Op C)) X, (G \compf F) X)) _).
+Local Notation N' := (@NatMixin  _ _ (F \compf G) (idf C) (fun X : Ob C => id : Mor ((F \compf G) X, (idf C) X)) _).
+Local Notation M' := (@NatMixin _ _ (idf C) (F \compf G) (fun X : Ob (Op (Op C)) => id : Mor ((idf C) X, (F \compf G) X)) _).
 Lemma dualK : @equiv_op (obs_equivType cats) (Op (Op C)) C.
 do !apply: ex_intro.
 apply: (@Isomorphisms _ _ _ F G) => //.
@@ -276,14 +276,15 @@ Example cat2 : category := catn 2.
 Example cat4 : category := catn 4.
 Notation square := cat4.
 
-Definition canonical_embedding1 C (A : Ob C) :=
-  {|
-    map_of_objects := fun _ : cat1 => A;
-    map_of_morphisms := fun _ _ _ => id;
-    id_id := fun _ : cat1 => reflP;
-    pres_comp := fun _ _ _ _ _ => comp0m id;
-    pres_equiv := fun _ _ _ _ _ => reflP
-  |}.
+Definition smush C D (A : Ob D) :=
+  @FunMixin C D (fun _ : Ob C => A)
+            (fun _ _ _ => id)
+            (fun _ : Ob C => reflP)
+            (fun _ _ _ _ _ => comp0m id)
+            (fun _ _ _ _ _ => reflP).
+
+Canonical smush_funType C D (A : Ob D) := Eval hnf in FunType C D (@smush C D A).
+
 Section CanonicalEmmbedding0.
 Variable C : category.
 Local Definition embedding0_ob (A : Ob cat0) :=
@@ -303,10 +304,12 @@ Local Definition embedding0_mor (A : Ob cat0) :=
   end.
 
 Definition canonical_embedding0 : Fun(cat0, C).
-refine (@Functor _ _ embedding0_ob embedding0_mor _ _ _)
+refine (@FunMixin _ _ embedding0_ob embedding0_mor _ _ _)
         => //; case => //.
 Defined.
 End CanonicalEmmbedding0.
+
+Canonical canon0_funType C := Eval hnf in FunType cat0 C (canonical_embedding0 C).
 
 Section CanonicalEmmbedding2.
 Variable C : category.
@@ -334,7 +337,7 @@ case: m Hm f => //.
 Defined.
 
 Definition canonical_embedding2 (A B : Ob C) (f : Mor(A, B)) : Fun(cat2, C).
-refine (@Functor _ _ (embedding2_ob A B)
+refine (@FunMixin _ _ (embedding2_ob A B)
                  (@embedding2_mor A B f)
                  _ _ _) => //.
 case => m Hm; do !case:m Hm => [|m] Hm //=; by apply/reflP.
@@ -385,106 +388,333 @@ Notation tcat := tcat_catType.
 Definition tcatn n := tcat (catn n).
 
 Section TrivialEmmbedding.
-Variable C : category.
-Variable choice : seq (Ob C).
+Variable n : nat.
 
-Definition double_pair (a b : nat) := [:: [:: a]; [::a; b]].
+Definition triv_mor' (x y : nat) := x == y.
+Definition triv_id (x : nat) : triv_mor' x x.
+  apply/eqP; apply: erefl.
+Defined.
+Definition triv_comp' (x y z : nat) : y == z -> x == y -> x == z.
+Proof. by move/eqP=> -> /eqP ->. Defined.
 
-Lemma double_pairE (a b c d : nat) :
-  (double_pair a b == double_pair c d) = (a == c) && (b == d).
-Proof.
-  apply/eqP.
-  case: ifP.
-   by case/andP => /eqP -> /eqP ->.
-  move=> H H'; move/negP: H => H; apply: H.
-  move/eqP: H'.
-  do !rewrite ?(eqE, andbT) /=.
-  do !case/andP.
-  by move=> ->.
-Qed.
+Lemma tcat_associativity' : @Category.associativity_of_morphisms _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
 
-Inductive triv_mor' : seq (seq nat) -> Type :=
-| tm : forall (x : 'I_(size choice)) y,
-    y = (double_pair (nat_of_ord x) (nat_of_ord x)) ->
-    triv_mor' y.
-Definition triv_id' (x : 'I_(size choice)) : triv_mor' (double_pair x x).
-  by apply: (@tm x).
-  Defined.
-Definition triv_comp' (x y z : 'I_(size choice)) (b1 : triv_mor' (double_pair y z)) (b2 : triv_mor' (double_pair x y)) : triv_mor' (double_pair x z).
-Proof.
-  have: (double_pair y z) = (double_pair x y).
-  apply/eqP.
-  rewrite double_pairE.
-  case: x y z b1 b2 => mx ix [my iy] [mz iz] /=.
-  case.
-  
-  case: x y z b1 b2 => mx ix.
-  case: b1.
-  
-  case: b1 b2.
-   := tm x.
-Definition triv_equiv' := (fun x y => trivial_equivMixin (triv_mor' (double_pair x y))).
-
-Lemma tcat_associativity' : @Category.associativity_of_morphisms _ _ triv_comp' triv_equiv'.
-Proof. by move=> ? ? ? ? h i j. Defined.
-
-Lemma tcat_compm0' : @Category.identity_morphism_is_right_identity _ _
-                                                                  triv_id'
+Lemma tcat_compm0' : @Category.identity_morphism_is_right_identity _
+                                                                  triv_mor'
+                                                                  triv_id
                                                                   triv_comp'
-                                                                  triv_equiv'.
-Proof. by move=> ? ? ?. Defined.
+                                                                  (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
 Lemma tcat_comp0m' : @Category.identity_morphism_is_left_identity _
-                                                                  _
-                                                                  triv_id'
-                                                                  triv_comp'
-                                                                  triv_equiv'.
-Proof. by move=> ? ? ?. Defined.
-Lemma tcat_comp_left' : @Category.compatibility_left _ _ triv_comp' triv_equiv'.
-Proof. by move=> ??? ???. Defined.
-Lemma tcat_comp_right' : @Category.compatibility_right _ _ triv_comp' triv_equiv'.
-Proof. by move=> ??? ???. Defined.
+                                                                 triv_mor'
+                                                                 triv_id
+                                                                 triv_comp'
+                                                                 (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_comp_left' : @Category.compatibility_left _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_comp_right' : @Category.compatibility_right _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
 Notation tcat_catMixin' := (CatMixin tcat_associativity' tcat_compm0' tcat_comp0m' tcat_comp_left' tcat_comp_right').
-Definition tcat_catType' := Eval hnf in CatType _ tcat_catMixin'.
-Notation tcat' := tcat_catType'.
-Definition cast_morL (f g : 'I_(size choice)) :
-  triv_mor' (double_pair f g) ->
-  @equiv_op (obs_equivType (catn (size choice))) f g.
-case: f g => m i [m' i'] /=.
-case.
-case.
-rewrite equivE /=.
+Definition tcat_catType' := Eval hnf in CatType nat tcat_catMixin'.
 
-apply (ex_intro _ _ erefl).
-by apply: Isomorphisms.
-apply (@Isomorphisms _ _ _ reflP).
-             <-> f == g.
-split.
- case => /= H1 [] H2 _.
- apply/eqP.
- apply: val_inj => /=.
- apply/eqP.
- rewrite eqn_leq.
- by apply/andP. 
-move/eqP => ->.
-apply/reflP.
+Definition triv_incl (t : Ob (tcatn n)) : Ob tcat_catType' := t.
+Definition triv_incl_mor (s t : Ob (tcatn n)) (f : Mor (s, t)) : Mor(triv_incl s, triv_incl t).
+Proof.
+  suff ->: s = t by apply id.
+  move: s t f=> [m i] [m' i'] [f [g p]].
+  apply: val_inj.
+  apply/eqP.
+  rewrite eqn_leq.
+  by apply/andP.
 Defined.
-Definition cast_morL (f g : 'I_(size choice)) :
-  f == g -> @equiv_op (obs_equivType (catn (size choice))) f g.
-move=> H.
-by apply cast_mor.
-Defined.
-Definition cast_morR (f g : 'I_(size choice)) :
-  @equiv_op (obs_equivType (catn (size choice))) f g -> f == g.
-move=> H.
-by apply cast_mor.
+Lemma triv_pres_equiv : Functor.preserve_equivalence triv_incl_mor.
+Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
+
+Lemma triv_pres_comp : Functor.preserve_composition triv_incl_mor.
+Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
+
+Lemma triv_id_id : Functor.maps_identity_to_identity triv_incl_mor.
+Proof. by move=> [m i]. Defined.
+
+Definition trivial_inclusion : Fun(tcatn n, tcat_catType') := FunMixin triv_id_id triv_pres_comp triv_pres_equiv.
+End TrivialEmmbedding.
+(* because of the silly unify problem *)
+Section Product.
+Variable C D : category.
+Definition prod_mor (a b : Ob C * Ob D) := prod (Mor(fst a, fst b)) (Mor(snd a, snd b)).
+Definition prod_id (a : Ob C * Ob D) : prod_mor a a := (@Category.id _ _ (fst a), @Category.id _ _ (snd a)).
+Definition prod_comp (a b c : Ob C * Ob D) (bc : prod_mor b c) (ab : prod_mor a b) : prod_mor a c :=
+  (fst bc \compm fst ab, snd bc \compm snd ab).
+Definition prod_cat_equivMixin A B := prod_equivMixin (@equiv C (fst A) (fst B)) (@equiv D (snd A) (snd B)).
+
+Arguments prod_comp /.
+Lemma prod_associativity : @Category.associativity_of_morphisms _ prod_mor prod_comp prod_cat_equivMixin.
+Proof. by move=> [??] [??] [??] [??] [??] [??] [??]; split; apply compmA. Qed.
+
+Lemma prod_compm0 : @Category.identity_morphism_is_right_identity _
+                                                                  prod_mor
+                                                                  prod_id
+                                                                  prod_comp
+                                                                  prod_cat_equivMixin.
+Proof. by move=> [??] [??] [??]; split; apply compm0. Defined.
+Lemma prod_comp0m : @Category.identity_morphism_is_left_identity _
+                                                                  prod_mor
+                                                                  prod_id
+                                                                  prod_comp
+                                                                  prod_cat_equivMixin.
+Proof. by move=> [??] [??] [??]; split; apply comp0m. Defined.
+
+Lemma prod_comp_left : @Category.compatibility_left _ prod_mor prod_comp prod_cat_equivMixin.
+Proof. move=> [??] [??] [??] [??] [??] [??] [??]; split; by apply: comp_left. Defined.
+
+Lemma prod_comp_right : @Category.compatibility_right _ prod_mor prod_comp prod_cat_equivMixin.
+Proof. move=> [??] [??] [??] [??] [??] [??] [??]; split; by apply: comp_right. Defined.
+Notation prod_catMixin := (CatMixin prod_associativity prod_compm0 prod_comp0m prod_comp_left prod_comp_right).
+Canonical prod_catType := Eval hnf in CatType (Ob C * Ob D) prod_catMixin.
+Definition pfst : Fun(prod_catType, C).
+  apply: (@FunMixin prod_catType C fst (fun _ _ => fst)).
++ move=> ?; by apply/reflP.
++ move=> ? ? ? ? ?; by apply/reflP.
++ by move=> ? ? [??] [??] [??].
 Defined.
 
-Local Notation F := (@Functor tcat' (tcatn (size choice)) ssrfun.id cast_morL _ _ _ : Mor(tcat', tcatn (size choice))).
-Local Notation G := (@Functor (tcatn (size choice)) tcat' ssrfun.id cast_morR _ _ _ : Mor(_, tcat')).
-Local Notation N := (@NaturalTransformation _ _ (G \compf F) (idf tcat') (fun X => id : Mor ((G \compf F) X, _)) _).
-Local Notation M := (@NaturalTransformation _ _ (idf _) (G \compf F) (fun X => id : Mor (_, (G \compf F) X)) _).
-Local Notation N' := (@NaturalTransformation _ _ (F \compf G) (idf _) (fun X => id : Mor ((F \compf G) X, (idf _) X)) _).
-Local Notation M' := (@NaturalTransformation _ _ (idf _) (F \compf G) (fun X => id : Mor ((idf _) X, (F \compf G) X)) _).
+Definition psnd : Fun(prod_catType, D).
+  apply: (@FunMixin prod_catType D snd (fun _ _ => snd)).
++ move=> ?; by apply/reflP.
++ move=> ? ? ? ? ?; by apply/reflP.
++ by move=> ? ? [??] [??] [??].
+Defined.
+End Product.
+Notation "a * b" := (prod_catType a b).
+
+Section Point.
+Inductive point_ob :=
+| pt : point_ob.
+
+Definition point_mor (x y : point_ob) := point_ob.
+Definition point_comp (x y z : point_ob) : point_mor y z -> point_mor x y -> point_mor x z := (fun _ _ => pt).
+
+Lemma point_associativity : @Category.associativity_of_morphisms _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
+Proof. move => /= C D E F h i j; by apply/reflP. Defined.
+
+Lemma point_compm0 : @Category.identity_morphism_is_right_identity _ _ (fun _ => pt) point_comp (fun _ _ => trivial_equivMixin point_ob).
+Proof. move => /= C D []; by apply/reflP. Defined.
+
+Lemma point_comp0m : @Category.identity_morphism_is_left_identity _ _ (fun _ => pt) point_comp (fun _ _ => trivial_equivMixin point_ob).
+Proof. move => /= C D []; by apply/reflP. Defined.
+
+Lemma point_comp_left : @Category.compatibility_left _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
+Proof. move => [] [] [] [] [] [] _; by apply/reflP. Defined.
+
+Lemma point_comp_right : @Category.compatibility_right _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
+Proof. move => [] [] [] [] [] [] _; by apply/reflP. Defined.
+
+Notation point_catMixin := (CatMixin point_associativity point_compm0 point_comp0m point_comp_left point_comp_right).
+Canonical point_catType := Eval hnf in CatType _ point_catMixin.
+End Point.
+Coercion pto_pt (_ : point_ob) := point_catType.
+
+Section Point.
+Variable C : category.
+Local Definition sp := @smush_funType pt C.
+Local Notation Fm := (fun x y (f : Mor(x, y)) => (@NatMixin _ _ (sp x) (sp y) (fun _ => f) _)).
+Definition ptC : Fun (C, Fun (pt, C)).
+  apply: (@FunMixin _ _ (fun x => @smush pt C x) Fm _ _ _).
+  move=> x y f z a f' /=.
+  apply: Congruence.etrans; last apply: comp0m.
+  by apply/symP; apply: compm0.
+  move=> x y [] /=.
+  by apply/reflP.
+  move=> x y z w f g [] /=.
+  by apply/reflP.
+  by move=> x y z f f' H [].
+Defined.
+
+Definition Cpt : Fun (Fun(pt, C), C).
+apply: (@FunMixin _ _ (fun (f: Fun(pt, C)) => f pt) (fun x y f => f pt) _ _ _)=>//.
+move=> x; by apply/reflP.
+move=> ?????; by apply/reflP.
+Defined.
+
+Local Notation N := (@NatMixin _ _ (Cpt \compf ptC) (idf C) (fun X => id) _).
+Local Notation M := (@NatMixin _ _ (idf C) (Cpt \compf ptC) (fun X => id) _).
+Lemma test X : (ptC \compf Cpt) X = (idf Fun (pt, C)) X.
+case: X => /= mo mm mi pc pe /=.
+
+rewrite /smush.
+
+Lemma pointE : @isomorphisms cats C Fun(pt, C) ptC Cpt.
+apply: Isomorphisms => /=.
+do !apply: ex_intro.
+apply: (@NaturalIsomorphisms _ _ _ _ N M _);
+ move=> ? ? ?.
+apply: Congruence.etrans; last apply: compm0.
+by apply/symP; apply: comp0m.
+apply: Congruence.etrans; last apply: compm0.
+by apply/symP; apply: comp0m.
+by apply: Isomorphisms; apply/symP; apply: compm0.
+Check (@NatMixin _ _ (ptC \compf Cpt) (idf Fun (pt, C)) (fun X => id) _).
+Local Notation N' := (@NatMixin _ _ (ptC \compf Cpt) (idf Fun (pt, C)) (fun X => id) _).
+Local Notation M' := (@NatMixin _ _ (idf C) (Cpt \compf ptC) (fun X => id) _).
+
+  apply (@NaturalIsomorphisms _ _ _ _ N M _) => // ??? /=.
+
+Variable a : Ob C.
+Print smush_funType.
+Check (sp a pt).
+Check ((fun _ : pt => a) : Fun(pt, C)).
+Local Notation N' := (@NatMixin _ _ _ _ (fun _ => F \compf G) _).
+Local Notation M' := (@NatMixin _ _ _ _ (fun _ => id) _).
+Proof.
+  do !apply: ex_intro.
+  apply: (@Isomorphisms _ _ _ F G _ _) => //.
+  move=> x y f z a f' /=.
+  apply: Congruence.etrans; last apply: comp0m.
+  by apply/symP; apply: compm0.
+  move=> x y [] /=.
+  by apply/reflP.
+  move=> x y z w f g [] /=.
+  by apply/reflP.
+  by move=> x y z f f' H [].
+  move=> ?; by apply/reflP.
+  move=> ? ? ? /= f g; by apply/reflP.
+  intros.
+  
+  intros.
+  do !apply: ex_intro.
+  apply: NaturalIsomorphisms.
+  case=> mo mm ii pc pe /=.
+  Set Printing All.
+  move=> [] /=.
+  apply (@NaturalIsomorphisms _ _ _ _ N' M' _) => // ??? /=.
+  
+  rewrite /=.
+  rewrite equivE /=.
+  vm_compute.
+  do !apply: ex_intro.
+  apply (@NaturalIsomorphisms _ _ _ _ N' M' _).
+  
+  apply: NaturalIsomorphisms.
+  move=> X.
+  apply: Isomorphisms.
+  rewrite equivE /=.
+  Check (@NatMixin _ _ (F \compf G) (idf _) (fun (X : Ob (Fun(pt, C))) =>
+                                               ((F \compf G) X) pt
+                                                 X pt
+        )).
+                                                                             (@Category.id _ _ X)))).
+  apply (@NaturalIsomorphisms _ _ _ _ ('(F \compf G) id) _ _).
+                              N' M' _)=> // ??? /=.
+  move=> ? ? ? f.
+  Check ('(F \compf G) id).
+          (@Category.id _ _ f)).
+  Check F.
+  Check G.
+  Check (@NatMixin _ _ (F \compf G) (idf _) (fun (X : Ob (Fun(pt, C))) =>  ('(F \compf G) (@Category.id _ _ X)) : Mor ((F \compf G) X, (idf (Fun(pt, C))) X)) _).
+  Check N'.
+Local Notation N' := 
+  Check N'.
+  Check N'.
+  intros.
+  rewrite /=.
+  move=> [] /=.
+  do !apply: ex_intro.
+  apply: Isomorphisms.
+  
+  apply: comp0m.
+  apply: compm0.
+  rewrite /=.
+  Check (@NaturalTransformation _ _ (G \compf F) (idf _) (fun X => @smush pt C X) _). : Mor ((G \compf F) X, _)) _).
+  Check N.
+  
+Local Notation N := 
+  
+   by apply: (@NaturalIsomorphisms _ _ _ _ N' M' _).
+  
+End Point.
+
+Section Product.
+Variable C : category.
+Variables L R : Ob C.
+
+Definition product C  :=
+  limit (@trivial_embeddingn 1 _ [tuple of [:: A; B]]).
+
+End Product.
+Definition final_object C :=
+  limit (canonical_embedding0 C).
+Definition kernel C (A B : Ob C) (f : Mor(A, B)) :=
+  limit (canonical_embedding2 f).
+Definition initial_object C :=
+  limit (canonical_embedding0 (Op C)).
+Definition cokernel C (A B : Ob C) (f : Mor(A, B)) :=
+  limit (@canonical_embedding2 (Op C) _ _ f).
+
+Section TrivialEmmbedding.
+Variable C : category.
+Local Definition im_c o := @trivial_embedding1 C o.
+Fixpoint tcatn' (choice : seq (Ob C)) :=
+  match choice with
+  | Cons _ x c => prod_catType (im_c x) (tcatn' c)
+  | Nil _ => tcatn 1
+  end.
+(* Local Notation F := (@Functor tcatn' (tcatn n.+1) ssrfun.id _ _ _ _ : Mor(tcatn', tcatn n.+1)). *)
+(* Local Notation G := (@Functor (tcatn n.+1) tcatn' ssrfun.id _ _ _ _ : Mor(tcatn n.+1, tcatn')). *)
+(* Local Notation N := (@NaturalTransformation _ _ (G \compf F) (idf tcatn') (fun X => id : Mor ((G \compf F) X, _)) _). *)
+(* Local Notation M := (@NaturalTransformation _ _ (idf _) (G \compf F) (fun X => id : Mor (_, (G \compf F) X)) _). *)
+(* Local Notation N' := (@NaturalTransformation _ _ (F \compf G) (idf _) (fun X => id : Mor ((F \compf G) X, (idf _) X)) _). *)
+(* Local Notation M' := (@NaturalTransformation _ _ (idf _) (F \compf G) (fun X => id : Mor ((idf _) X, (F \compf G) X)) _). *)
+Variable n : nat.
+About ltnSn.
+Variable t s : Ob C.
+(* Compute (unlift ) (Ordinal (ltnSn n))). *)
+
+Lemma tcatn'_eq choice : @equiv_op (obs_equivType cats) (tcatn (size choice).+1) (tcatn' choice).
+Proof.
+  elim: choice; first by apply/reflP.
+  move=> a c IH /=.
+  move: IH => [[fo fm fi fpc fpe] [[go gm gi gpc gpe] [p q]]].
+  set z := (Ordinal (ltn0Sn (size c).+1)).
+  case: im_c => /= ? [] /=.
+  rewrite /im_c .
+  
+  Check (fun x =>
+           match unlift x z with
+           | Some y =>
+             (a, fo y) : Ob (prod_catType (im_c a) (tcatn' c))
+           | None => _
+           end).
+                              
+             a
+             (tcatn' c)
+             (@pfst (im_c x) (tcatn' c))
+     if x == (size c).+1
+     then im_c a
+     else fo x).
+  Check (@Functor (tcatn (size c).+2) (tcatn' c) _ _ _ _ _).
+  Check (@Functor (tcatn' c) (tcatn (size c).+2) _ _ _ _ _).
+  case: (tcatn 1) => /= ? [] /=.
+Local Notation F := 
+  
+  do !apply: ex_intro.
+  Check (@Functor (tcatn' [::]) (tcatn 1) (fun x => x) (fun _ _ x => x) _ _ _ : Mor(tcatn' _, tcatn _)).
+  
+  rewrite equivE /=.
+  Check (@Functor (tcatn _) (tcatn' _) (nth (thead choice) (behead choice)) _ _ _ _ : Mor(tcatn _, tcatn' _)).
+Local Notation G := 
+  
+  Check G .
+  do !apply: ex_intro.
+  apply (@Isomorphisms _ _ _ G F) => //=;
+  intros; do !apply: ex_intro.
+   by apply: (@NaturalIsomorphisms _ _ _ _ N' M' _).
+  by apply: (@NaturalIsomorphisms _ _ _ _ N M _).
+  apply: ex_intro.
+
 
 Lemma tcat_eq : @equiv_op (obs_equivType cats) (tcatn (size choice)) tcat'.
 Proof.
@@ -494,290 +724,52 @@ Proof.
    by apply: (@NaturalIsomorphisms _ _ _ _ N' M' _).
   by apply: (@NaturalIsomorphisms _ _ _ _ N M _).
 Qed.
-  
-Definition triv_incl (t : Ob tcat') : Ob C.
-  case: t.
-  move=> m H.
-  case: choice H; first by [].
-  move=> a l /= H.
-  apply: nth a (rev l) (m.-1).
-Defined.
-Definition triv_incl_mor (s t : Ob tcat') (f : Mor (s, t)) : Mor(triv_incl s, triv_incl t).
-  suff->: s = t; first by apply id.
-  by move/eqP: f.
-Defined.
-End TrivialEmmbedding.
 
-Section TrivialEmmbedding.
-Local Notation "f == g" := (@equiv_op _ f g).
-Notation tcat' := tcat_catType'.
-
-Lemma triv_mor_unique C (choice : seq (Ob C)) (s t : Ob (tcat' choice)) (f g : Mor (s, t)) : f = g.
+Definition triv_emb (t : tcat_catType') : Ob C :=
+  nth default choice t.
+Definition triv_emb_mor (s t : Ob tcat_catType') (f : Mor (s, t)) : Mor(triv_emb s, triv_emb t).
+  match s, t with
+  | _, _ => Category.id
+  end.
 Proof.
-  apply/eqP.
-  
-
-  
-
-Arguments triv_mor' /.
-Lemma triv_mor_unique C choice (s t : Ob (tcat' choice)) (f g : Mor (s, t)) : triv_incl_mor f = @triv_incl_mor C _ _ _ g.
-have: f = g.
-case: s f g => sm si.
-case: t => tm ti f g.
-rewrite /=.
-
-move: f g => /=.
-
-elim.
-rewrite eqE.
-move=> ->.
-move/eqP=>f.
-  case: f.
-  case: g.
-
-Lemma ltn_sizeS m T a (c : seq T) (j : m != size c) (i : m < size (a :: c)) : m < size c.
-Proof. rewrite ltn_neqAle j; apply i. Defined.
-
-Lemma ord_down C c m (a : Ob C) i (j : m != size c) :
-  (@triv_incl C (@cons (Category.sort C) a c) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i)) =
-    (@triv_incl C c (@Ordinal (@size (Category.sort C) c) m (@ltn_sizeS m (Category.sort C) a c j i))).
-Proof.
-  case: c i j; first by case: m.
-  case Hm: m => [|m'].
-   intros;
-   rewrite /= -cat1s rev_cat.
-   by case: (rev l).
-  move => a' l i j /=.
-  have Hm' : 0 < m by case: m Hm.
-  have ?: m.-1 < size ([:: a'] ++ l)
-   by move: i; rewrite Hm.
-  have Hml: m.-1 < size l.
-   apply: (@ltn_sizeS _ _ a') => //.
-   move: j; apply contra.
-   move/eqP=> /= <-.
-   by rewrite Hm /=.
-  have ?: m' < size l by move: Hml; rewrite Hm.
-  rewrite /= -cat1s !nth_rev // !nth_cat.
-  case: ifP.
-   rewrite /leq subn1 subn_eq0 leqNgt.
-   by move: (@ltn_sizeS _ _ a' _ j i) => /= ->.
-  move=> H.
-  rewrite subn1 subSS subnS.
-  apply set_nth_default.
-  (rewrite prednK //; first by apply leq_subr).
-  by rewrite subn_gt0.
+suff ->: s = t by apply id.
+by move: f => /eqP.
 Defined.
 
-Lemma cast_mor' C c m (a : Ob C) i (j : m != size c) :
-  {f : Mor (triv_incl (Ordinal (ltn_sizeS j i)), triv_incl (Ordinal (@ltn_sizeS _ _ a _ j i))) | f = id }
-  -> {f : Mor (triv_incl (Ordinal i), triv_incl (Ordinal i)) | f = id }.
-by rewrite ord_down.
-Defined.
-Arguments cast_mor' /.
-
-Definition triv_mor_pull C c m (a : Ob C) i (j : m != size c)
-      (H : (@triv_incl_mor C c (@Ordinal (@size C c) m (@ltn_sizeS m C a c j i)) (@Ordinal (@size C c) m (@ltn_sizeS m C a c j i)) id) = id) :=
-  (proj1_sig (@cast_mor' _ c m a i j (exist _ (triv_incl_mor id) H))).
-
-Print triv_mor_pull.
-
-
-  @equiv_op (EquivType _ (@equiv C _ _))
-             id ->
-  @equiv_op (EquivType _ (@equiv C _ _))
-            (@triv_incl_mor C (a :: c) (@Ordinal (@size C (a :: c)) m i) (@Ordinal (@size C (a :: c)) m i) id) id.
-(*   move=> H. *)
-(*   apply: Congruence.etrans; last by apply: (proj2_sig (@cast_mor' _ c m a i j (exist _ (triv_incl_mor id) H))). *)
-(*   elim: c i j H; first by case: m. *)
-(*   move=> a' c IH i j H. *)
-(*   apply: Congruence.etrans; last first. *)
-(*   apply IH. *)
-(*   case: c i j H; first by case: m. *)
-(*   case: m => /=. *)
-(*   vm_compute. *)
-(*   rewrite /sval /=. *)
-(*   move=> a' [] => //. *)
-(*   destruct triv_incl_mor. *)
-(*   move=> c l i j H. *)
-(*   destruct cast_mor'. *)
-(*   rewrite /=. *)
-(*   apply: Congruence.suff_eq. *)
-(*   destruct exist. *)
-(*   destruct exist. *)
-(*   destruct H. *)
-(*   vm_compute. *)
-(*   move: H => /= H. *)
-(*   case: H. *)
-(*   Set Printing All. *)
-(*   apply/reflP. *)
-(*   rewrite /=. *)
-(*   rewrite /cast_mor'. *)
-(*   by vm_compute. *)
-(*   move: (@cast_mor' _ c m a i j (exist _ (triv_incl_mor id) H)). *)
-(*   Check (@triv_incl_mor C c (@Ordinal (@size C c) m (@ltn_sizeS m C a c j i)) (@Ordinal (@size C c) m (@ltn_sizeS m C a c j i)) id). *)
-  
-(*             Check (@triv_incl_mor C (a :: c) (@Ordinal (@size C (a :: c)) m i) (@Ordinal (@size C (a :: c)) m i) id). *)
-            
-(*   rewrite -ord_down in H. *)
-(*   rewrite ord_down. *)
-
-(* Lemma triv_idE C a c m i (j : m != size c) : *)
-(*   let o2 := (@triv_incl C (@cons (Category.sort C) a c) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i)) in *)
-(*   let o1 := (@triv_incl C c (@Ordinal (@size (Category.sort C) c) m (@ltn_sizeS m (Category.sort C) a c j i))) in *)
-(*   @Category.id (Category.sort C) (Category.class C) o1 == @Category.id (Category.sort C) (Category.class C) o2. *)
-
-(* Lemma triv_inclE C a c m i (j : m != size c) *)
-(*   (H : @triv_incl_mor C c (@Ordinal (@size C c) m (ltn_sizeS j i)) (@Ordinal (@size C c) m (ltn_sizeS j i)) (@reflP (obs_equivType (catn (@size C c))) (@Ordinal (@size C c) m (ltn_sizeS j i)))) *)
-(*   : @triv_incl_mor C (a :: c) (@Ordinal (@size C c).+1 m i) (@Ordinal (@size C c).+1 m i) (@reflP (obs_equivType (catn (@size C c).+1)) (@Ordinal (@size C c).+1 m i)). *)
-(* Proof. *)
-(*   case: c i j Hm; first by case: m. *)
-(*   case: m => // m a' l. *)
-(*   case: l => //; first by case: m => //. *)
-(*   move=> a'' l i j Hm /=. *)
-(*   vm_compute. *)
-(*   destruct cat1s. *)
-(*   case: i. *)
-(*   move=> x. *)
-(*   move=> /= a' l i j Hm. *)
-(*   move=> i j. *)
-(*    by rewrite ltn0 in H. *)
-(*   case: c. *)
-(*   vm_compute. *)
-
-  (* ============================ *)
-  (* @equiv_op *)
-  (*   (@Category.morphisms (Category.sort C) (Category.class C) (@triv_incl C (@cons (Category.sort C) a c) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i)) *)
-  (*      (@triv_incl C (@cons (Category.sort C) a c) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i))) *)
-  (*   (@triv_incl_mor C (@cons (Category.sort C) a c) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i) *)
-  (*      ) (@Category.id (Category.sort C) (Category.class C) (@triv_incl C (@cons (Category.sort C) a c) (@Ordinal (@size (Category.sort C) (@cons (Category.sort C) a c)) m i))) *)
-  
-Lemma triv_id_id C choice : Functor.maps_identity_to_identity (@triv_incl_mor C choice).
-Proof.
-  elim: choice => [|a c IH X]; first by case.
-  case: X IH => [m i] IH.
-  case/boolP: (eqn m (size c)) => mc; last first.
-  apply (proj2_sig (@cast_mor' _ c m a i mc (exist _ (triv_incl_mor id) (IH (Ordinal (@ltn_sizeS _ _ a _ mc i)))))).
-  apply: Congruence.etrans; last by apply: (proj2_sig 
-  move: (@cast_mor' _ _ _ _ _ _ ).
-  Set Printing All.
-  Check IH.
-  
-  move: (IH m ) => H.
-  
+Definition trivial_embedding : Fun (tcat_catType', C).
+  refine (@Functor _ _ triv_emb _ _ _ _).
   move=> X.
-  case.
-  move=> ?.
-  [m i].
-  case=> m i /=.
-  move:
-  elim: choice m i => // a c IH m i.
-  move/eqP/eqP: mc => mc.
-  
-  move: (ord_down i mc) => ->.
-  rewrite -ord_down in H.
-  move=> H' /=.
-  apply H'.
-  
-  ltngtP
-  
-  apply: Congruence.etrans; last first.
-  apply IH.
-  
-  elim: choice.
-  set n := (size choice).
-  move=> i H.
-  case: n.
-  move sce: (size choice) => sc.
-  case: (size choice).
-  elim: (size choice) .
-  case: choice => t i.
-  case: t i => //= [i|a t i] x.
-   move/eqP:(i) => i'.
-   move: (x) => x'.
-   rewrite -i' in x.
-   move: x => /= [] ? H.
-   by rewrite ltn0 in H.
-  elim: n t i x=> // n IH t i x.
+  apply: comp0m.
+  apply: compm0.
+
+Lemma triv_id_id' : @Functor.maps_identity_to_identity _ _ triv_emb _. 
+Proof.
+  move=> m.
+  case: choice => //.
   vm_compute.
-  
-  move: i x => /=.
-   move/eqP
-  
-  rewrite tupleE.
-  elim: n => [t i [? H] | n IH t i [m mi]].
-   move:(H); by rewrite /= ltn0 in H.
-   move/eqP: mn IH mi i => -> IH mi i.
-   Check rshift.
-   
-   Check lift.
-  
-  case: t i => // a t i.
-  move: i; rewrite /= eqSS.
-  Search (_.+1 == _.+1 = _).
-  move: i => /=.
-  have i': eq_op (size t) n by move: i.
-  
-  Check (IH t i).
-  move: (IH t i).
-  move: IH mi i i';  => IH mi i i'.
-   case: t i' i => // a' l.
+  destruct eqP.
+  elim.
+  elim=> //=.
+  move=> m /=.
+  rewrite /triv_id.
+  destruct introTF.
   apply/reflP.
-  vm_compute.
-  Check (IH t i (Ordinal mi)).
-    rewrite size_cons.
-   
-   vm_compute.
-  move/eqP => i.
-  move=> ? /=.
-  [?| n IH choice].
-   => /= sc ss.
-   case: choice.
-  move=> 
-  Print ltn0.
-  vm_compute.
-  move=> A /=.
-  vm_compute.
-  destruct eqn0E.
-  destruct eq_reft_r.
-  move=> A; apply/reflP. Defined.
+    by move=> [m i]. Defined.
 
-Lemma triv_pres_comp : Functor.preserve_composition embedding_mor.
+Lemma triv_pres_equiv' : Functor.preserve_equivalence triv_emb_mor.
 Proof.
-move=> E F G /= [] f [] g /=.
-destruct f, g.
-apply: Congruence.etrans.
-apply/compm0.
-apply: subst_right.
-apply: triv_id_id.
-Defined.
+  move=> A B /= f f'.
+  rewrite !equivE => _.
+  move/eqP: (f) => H.
+  move=> ? ? /eqP.
+    by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
 
-Lemma triv_pres_equiv' (E F : triv_ob' 0)
-      (f : @morphisms tcatn' _ E F) : @Category.id _ _ (triv_incl E) == embedding_mor f.
-Proof. move: f => /= f. subst E. apply: total_reflP. Defined.
+Lemma triv_pres_comp : Functor.preserve_composition triv_incl_mor.
+Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
 
-Arguments embedding_mor /.
-Lemma triv_pres_equiv : Functor.preserve_equivalence embedding_mor.
-Proof.
-move=> A B /= E F f.
-rewrite -totalE.
-apply: Congruence.etrans; last apply: triv_pres_equiv'.
-apply/symP; by apply: triv_pres_equiv'.
-Defined.
 
-Definition trivial_embeddingn := Functor triv_id_id triv_pres_comp triv_pres_equiv.
-(* TODO : tcatn' == tcatn *)
+
 End TrivialEmmbedding.
-
-Definition product C (A B : Ob C) :=
-  limit (@trivial_embeddingn 1 _ [tuple of [:: A; B]]).
-Definition final_object C :=
-  limit (canonical_embedding0 C).
-Definition kernel C (A B : Ob C) (f : Mor(A, B)) :=
-  limit (canonical_embedding2 f).
-Definition initial_object C :=
-  limit (canonical_embedding0 (Op C)).
-Definition cokernel C (A B : Ob C) (f : Mor(A, B)) :=
-  limit (@canonical_embedding2 (Op C) _ _ f).
 
 Notation "0" := initial_object.
 Notation "1" := final_object.
