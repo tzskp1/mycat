@@ -242,7 +242,7 @@ Section ClassDef.
 Structure type := Pack {dom; cod; _: class_of dom cod; _ : Type}.
 Variables (domT codT : category) (cT : type).
 Definition class := let: Pack _ _ c _ := cT return class_of (dom cT) (cod cT) in c.
-Definition pack c := @Pack domT codT c (domT -> codT).
+Definition pack c := @Pack domT codT c (Ob domT -> Ob codT).
 Definition clone
            (c : mixin_of domT codT)
            (_ : dom cT -> domT)

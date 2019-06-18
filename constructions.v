@@ -66,8 +66,8 @@ End Cats.
 Notation cats := cats_catType.
 
 Canonical funs_equivType.
-Canonical obs_equivType.
 Canonical nats_equivType.
+Canonical obs_equivType.
 
 Section Pushout.
 Variables C D : category.
@@ -668,27 +668,14 @@ Variables C : category.
 Definition hom_ob (p : Ob ((Op C) * C)) := Mor(pfst p, psnd p) : Ob types.
 Definition hom_mor (p q : Ob (C * (Op C))) (f : Mor (p, q)) : Mor (hom_ob p, hom_ob q)
   := fun g => ('pfst f) \compm g \compm ('psnd f).
-Lemma hom_pres_equiv : Functor.preserve_equivalence hom_mor.
-Proof.
-  move=> [??] [??] f f' [].
-  rewrite !equivE /=.
-  move=> /= H1 H2 a.
-  rewrite equivE /=.
-  case: a.
-  move: a.
-  move=> a.
-  
-    by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
-
-Lemma triv_pres_comp : Functor.preserve_composition triv_incl_mor.
-Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
-
-Lemma triv_id_id : Functor.maps_identity_to_identity triv_incl_mor.
-Proof. by move=> [m i]. Defined.
-
-(* Fun((Op C) * C, types) *)
-
+Axiom hom_id_id : Functor.maps_identity_to_identity hom_mor.
+Axiom hom_pres_comp : Functor.preserve_composition hom_mor.
+Axiom hom_pres_equiv : Functor.preserve_equivalence hom_mor.
+Definition hom := FunMixin hom_id_id hom_pres_comp hom_pres_equiv.
+Canonical hom_funType := Eval hnf in FunType _ _ hom.
 End Hom.
+
+Local Notation "f == g" := (equiv_op f g).
 
 Module Adjunction.
 Section Axioms.
@@ -696,6 +683,7 @@ Variables C D : category.
 Variable F : Fun (C, D).
 Variable G : Fun (D, C).
 Variable n : forall X Y, Mor (F X, Y) -> Mor (X, G Y).
+
 Local Definition adjunction_axiom X Y :=
   { m : Mor (X, G Y) -> Mor (F X, Y) |
     comp (@n X Y) m = ssrfun.id /\ comp m (@n X Y) = ssrfun.id }.
@@ -731,13 +719,19 @@ Arguments compfm /.
 Arguments compfo /.
 (* Arguments compm /. *)
 Lemma adjKL :
-  a.1.1 \compf a.1.2 \compf a.1.1 == a.1.1.
+  (a.1.1 \compf a.1.2 \compf a.1.1 : Ob (Fun(C, D))) == a.1.1.
 Proof.
 case: a => F G n aa /=.
-set N := @NaturalTransformation _ _ F (F \compf G \compf F) (fun X => 'F (@n X (F X) id)).
-set M := @NaturalTransformation _ _ (F \compf G \compf F) F (fun X => (proj1_sig (aa (G (F X)) (F X)) id)).
+set N := @NatMixin _ _ F (F \compf G \compf F) (fun X => 'F (@n X (F X) id)).
+set M := @NatMixin _ _ (F \compf G \compf F) F (fun X => (proj1_sig (aa (G (F X)) (F X)) id)).
+rewrite equivE /=.
+apply: ex_intro.
+apply: ex_intro.
 do !apply: ex_intro.
 apply: (@NaturalIsomorphisms _ _ _ _ (M _) (N _)).
+apply (ex_intro )).
+apply: 
+apply: Isomorphisms.
 move=> X X' f.
 case: (aa (G (F X)) (F X)) => fX [] Xl Xr.
 case: (aa (G (F X')) (F X')) => fX' [] X'l X'r /=.
