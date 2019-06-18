@@ -8,15 +8,14 @@ Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 
 Module Category.
-(* locally small category *)
 Section Axioms.
 Variable objects : Type.
 Variable morphisms : objects -> objects -> Type.
 Variable id : forall A, morphisms A A.
-Variable comp : forall {A B C}, morphisms B C -> morphisms A B -> morphisms A C.
-Variable cat_equivType : forall A B, Equivalence.mixin_of (morphisms A B).
+Variable comp : forall A B C, morphisms B C -> morphisms A B -> morphisms A C.
+Variable cat_equivMixin: forall A B, Equivalence.mixin_of (morphisms A B).
 Local Notation "f '\comp' g" := (comp f g) (at level 40).
-Local Notation "f == g" := (@equiv_op (EquivType (morphisms _ _) (cat_equivType _ _)) f g).
+Local Notation "f == g" := (@equiv_op (EquivType _ (cat_equivMixin _ _)) f g).
 Definition associativity_of_morphisms :=
   forall D E F G
          (h : morphisms D E)
@@ -40,7 +39,7 @@ Structure mixin_of objects :=
       id: _;
       compm: _;
       equiv: _;
-      associativity : @associativity_of_morphisms objects morphisms compm equiv;
+      compmA: @associativity_of_morphisms objects morphisms compm equiv;
       compm0 : @identity_morphism_is_right_identity objects morphisms id compm equiv;
       comp0m : @identity_morphism_is_left_identity objects morphisms id compm equiv;
       comp_left : @compatibility_left objects morphisms compm equiv;
@@ -58,22 +57,23 @@ Definition pack c := @Pack T c T.
 Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c.
 End ClassDef.
 
-Module Exports.
+Local Notation "f == g" := (equiv_op f g).
+Module Notations.
 Coercion sort : type >-> Sortclass.
 Notation category := type.
 Notation CatMixin := Mixin.
 Notation CatType T m := (@pack T m).
-Arguments id objects {m A}.
+Arguments id {objects m} A.
 Notation id := (@Category.id _ (class _) _).
 Notation morphisms := morphisms.
 Notation compm := compm.
-Notation compmA := associativity.
-Notation compm0 := compm0.
+Arguments compm {_ _ A B C} _ _ /.
 Definition equiv C := (equiv (class C)).
+Notation compmA := compmA.
+Notation compm0 := compm0.
 Notation comp0m := comp0m.
 Notation comp_left := comp_left.
 Notation comp_right := comp_right.
-Arguments compm {objects m A B C} _ _.
 Notation "f '\compm' g" := (compm f g) (at level 40).
 Notation "'#' f" := (fun g => comp g f) (at level 3).
 Notation "f '#'" := (fun g => comp f g) (at level 3).
@@ -85,44 +85,21 @@ Notation "[ 'category' 'of' T 'for' C ]" := (@clone T C _ idfun id)
   (at level 0, format "[ 'category'  'of'  T  'for'  C ]") : form_scope.
 Notation "[ 'category' 'of' T ]" := (@clone T _ _ id id)
   (at level 0, format "[ 'category'  'of'  T ]") : form_scope.
-End Exports.
-End Category.
-Export Category.Exports.
+End Notations.
 
-Local Notation "f == g" := (@equiv_op (EquivType (morphisms _ _ _) (Category.equiv _ _ _)) f g).
-
-Lemma compm_comp c (A B C : Ob c) : @Congruence.compatible
-                                      (EquivType (Mor (_, _)) (Category.equiv _ B C))
-                                      (EquivType (Mor (_, _)) (Category.equiv _ A B))
-                                      (EquivType (Mor (_, _)) (Category.equiv _ A C))
-                                      compm.
-Proof.
-  move => f g h i H1 H2.
-  apply: Equivalence.trans;
-    first by apply comp_left, H2.
-  by apply comp_right, H1.
-Qed.
-Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
-Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
-
-Lemma identity_morphism_is_the_unique C (A : Ob C) (id' : Mor (A, A)) :
-  (forall B (f : Mor (A, B)), (f \compm id') == f) -> id' == id.
-Proof.
-move => H.
-apply: Congruence.etrans; last by apply H.
-apply comp0m.
-Qed.
-
-Section TotalEquiv.
+Module TotalEquiv.
+Import Notations.
 Variable C : category.
 Structure total :=
   TotalEquiv
     { total_dom : Ob C;
       total_cod : Ob C;
-      total_mor :> Mor (total_dom, total_cod) }.
+      total_mor : Mor (total_dom, total_cod) }.
 Local Notation td := total_dom.
 Local Notation tc := total_cod.
 Local Notation tm := total_mor.
+Coercion TotalEquiv : morphisms >-> total.
+Local Notation "f == g" := (@equiv_op (EquivType _ (equiv _ _)) f g).
 
 Definition total_op (f g : total) :=
   let fA := td f in
@@ -165,9 +142,48 @@ Proof.
   by apply/transP; first apply: H1.
 Qed.
 Definition total_equivMixin := EquivMixin total_symP total_transP total_reflP.
-Definition total_equivType (A B E F : Ob C) (_ : Mor(A, B)) (_ : Mor(E, F)) :=
-  Eval hnf in EquivType _ total_equivMixin.
+Canonical total_equivType := Eval hnf in EquivType total total_equivMixin.
+Local Notation "f ~ g" := (@equiv_op total_equivType (TotalEquiv f) (TotalEquiv g)) (at level 30).
+
+Lemma suff_partial (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) : f == g -> f ~ g.
+Proof.
+rewrite !equivE /= => H.
+apply: (ex_intro _ erefl).
+by apply: (ex_intro _ erefl).
+Qed.
 End TotalEquiv.
+
+Module Exports.
+Include Notations.
+Include TotalEquiv.
+Canonical partial_equivType C (A B : Ob C) :=
+  Eval hnf in EquivType (Mor (A, B)) (equiv A B).
+End Exports.
+End Category.
+Export Category.Exports.
+Local Notation "f == g" := (equiv_op f g).
+
+Lemma compm_comp c (A B C : Ob c) : @Congruence.compatible
+                                      (EquivType (Mor (_, _)) (Category.equiv _ B C))
+                                      (EquivType (Mor (_, _)) (Category.equiv _ A B))
+                                      (EquivType (Mor (_, _)) (Category.equiv _ A C))
+                                      compm.
+Proof.
+  move => f g h i H1 H2.
+  apply: Equivalence.trans;
+    first by apply comp_left, H2.
+  by apply comp_right, H1.
+Qed.
+Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
+Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
+
+Lemma identity_morphism_is_the_unique C (A : Ob C) (id' : Mor (A, A)) :
+  (forall B (f : Mor (A, B)), (f \compm id') == f) -> id' == Category.id A.
+Proof.
+move => H.
+apply: Congruence.etrans; last by apply H.
+apply comp0m.
+Qed.
 
 (* Section PartialEquiv. *)
 (* Variable C : category. *)
@@ -424,15 +440,17 @@ Module Isomorphism.
 Inductive isomorphisms C (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
   Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
 
-Arguments isomorphisms {_ _ _} _ _.
-Arguments Isomorphisms {_ _ _} _ _ _ _.
-
 Inductive natural_isomorphisms
-          {C D} {F G : Fun (C, D)}
+          C D (F G : Fun (C, D))
           (N : Nat (F, G)) (M : Nat (G, F)) : Prop :=
   NaturalIsomorphisms :
     (forall (X : Ob C), isomorphisms (N X) (M X)) -> 
     natural_isomorphisms N M.
+
+Arguments isomorphisms {_ _ _} _ _.
+Arguments Isomorphisms {_ _ _} _ _ _ _.
+Arguments natural_isomorphisms {_ _ _ _} _ _.
+Arguments NaturalIsomorphisms {_ _ _ _} _ _ _.
 
 Section LocalArg.
 Variable C : category.
