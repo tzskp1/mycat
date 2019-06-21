@@ -61,13 +61,13 @@ Lemma equivE T x : equiv_op x = Equivalence.op (Equivalence.class T) x.
 Proof. by []. Qed.
 
 Lemma symP T : Equivalence.symmetricity (@equiv_op T).
-Proof. by case: T => ? []. Qed.
+Proof. by case: T => ? []. Defined.
 
 Lemma transP T : Equivalence.transitivity (@equiv_op T).
-Proof. by case: T => ? []. Qed.
+Proof. by case: T => ? []. Defined.
 
 Lemma reflP T : Equivalence.reflexivity (@equiv_op T).
-Proof. by case: T => ? []. Qed.
+Proof. by case: T => ? []. Defined.
 
 Arguments equiv_op {T} x : simpl never.
 Arguments symP [T f g].
@@ -75,35 +75,6 @@ Arguments transP [T f g h].
 Arguments reflP [T f].
 
 Prenex Implicits equiv_op symP transP reflP.
-
-Module Congruence.
-Lemma etrans (e : equivType) (x y z : e) : x == y -> y == z -> x == z.
-Proof. by move=> ?; apply/transP. Defined.
-Lemma suff_eq (e : equivType) (x y : e) : x = y -> x == y.
-Proof. move=> ->; by apply/reflP. Defined.
-Section Compatibility.
-Variables e1 e2 e3 : equivType.
-Variable F : e1 -> e2 -> e3.
-Definition compatible := forall f f' g g',
-  f == f' -> g == g' -> F f g == F f' g'.
-Variable comp_op : compatible.
-Lemma subst_left f f' g :
-  f == f' -> F f g == F f' g.
-Proof.
-  move => ?; apply: comp_op => //; apply reflP.
-Qed. 
-Lemma subst_right f g g' :
-  g == g' -> F f g == F f g'.
-Proof.
-  move => ?; apply: comp_op => //; apply reflP.
-Qed. 
-(* TODO: somthing *)
-End Compatibility.
-Arguments compatible {e1 e2 e3} _.
-Arguments etrans {e x y z} _ _.
-Arguments subst_right {e1 e2 e3 F} comp_op {_ _ _}.
-Arguments subst_left {e1 e2 e3 F} comp_op {_ _ _}.
-End Congruence.
 
 Section EqType.
 Variable T : eqType.
@@ -199,3 +170,37 @@ Proof. move=> [] p q; split; apply/reflP. Qed.
 Definition prod_equivMixin := EquivMixin prod_symP prod_transP prod_reflP.
 Definition prod_equivType := Eval hnf in EquivType (f * s) prod_equivMixin.
 End Prod.
+
+Module Congruence.
+Lemma etrans (e : equivType) (x y z : e) : x == y -> y == z -> x == z.
+Proof. by move=> ?; apply/transP. Defined.
+Lemma suff_eq (e : equivType) (x y : e) : x = y -> x == y.
+Proof. move=> ->; by apply/reflP. Defined.
+Section Compatibility.
+Variables e1 e2 e3 : equivType.
+Variable F : e1 -> e2 -> e3.
+Definition compatible := forall f f' g g',
+  f == f' -> g == g' -> F f g == F f' g'.
+Variable comp_op : compatible.
+Lemma subst_left f f' g :
+  f == f' -> F f g == F f' g.
+Proof.
+  move => ?; apply: comp_op => //; apply reflP.
+Qed. 
+Lemma subst_right f g g' :
+  g == g' -> F f g == F f g'.
+Proof.
+  move => ?; apply: comp_op => //; apply reflP.
+Qed. 
+Variable G : e1 -> e2.
+Variable comp_op' : forall f f', f == f' -> G f == G f'.
+Lemma congr1 f f' :
+  f == f' -> G f == G f'.
+Proof. move => ?. apply: comp_op' => //; apply reflP. Qed. 
+(* TODO: somthing *)
+End Compatibility.
+Arguments compatible {e1 e2 e3} _.
+Arguments etrans {e x y z} _ _.
+Arguments subst_right {e1 e2 e3 F} comp_op {_ _ _}.
+Arguments subst_left {e1 e2 e3 F} comp_op {_ _ _}.
+End Congruence.

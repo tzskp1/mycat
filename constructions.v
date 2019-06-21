@@ -65,9 +65,188 @@ Canonical cats_catType := Eval hnf in CatType category cats_catMixin.
 End Cats.
 Notation cats := cats_catType.
 
+Section Ordinal.
+Variable n : nat.
+(* 0 --> 1 *)
+(* |     | *)
+(* >     > *)
+(* 2 --> 3 *)
+Definition catnm (x y : ordinal n) :=
+  match x, y with
+  | Ordinal i _, Ordinal j _ =>
+    i <= j : Prop
+  end.
+
+Definition catnc
+           (x y z : ordinal n)
+           (g : catnm y z)
+           (f : catnm x y) : catnm x z.
+case: x y z f g => [x Hx] [y Hy] [z Hz] /=.
+exact: leq_trans.
+Defined.
+Definition catnm_equivMixin x y := trivial_equivMixin (catnm x y).
+
+Definition catn_id (x : ordinal n) : catnm x x.
+case: x => [x Hx] /=.
+exact: leqnn.
+Defined.
+
+Lemma catn_associativity : Category.associativity_of_morphisms catnc catnm_equivMixin.
+Proof. by []. Defined.
+
+Lemma catn_compm0 : Category.identity_morphism_is_right_identity catn_id catnc catnm_equivMixin.
+Proof. by []. Defined.
+
+Lemma catn_comp0m : Category.identity_morphism_is_left_identity catn_id catnc catnm_equivMixin.
+Proof. by []. Defined.
+
+Lemma catn_comp_left : Category.compatibility_left catnc catnm_equivMixin.
+Proof. by []. Defined.
+
+Lemma catn_comp_right : Category.compatibility_right catnc catnm_equivMixin.
+Proof. by []. Defined.
+Notation catn_catMixin := (CatMixin catn_associativity catn_compm0 catn_comp0m catn_comp_left catn_comp_right).
+Canonical catn_catType := Eval hnf in CatType (ordinal n) catn_catMixin.
+End Ordinal.
+Notation catn := catn_catType.
+Example cat0 : category := catn 0.
+Example cat1 : category := catn 1.
+Example cat2 : category := catn 2.
+Example cat4 : category := catn 4.
+Notation square := cat4.
+
+Section TrivialCategory.
+Variable C : category.
+Local Notation "f == g" := (@equiv_op (obs_equivType C) f g).
+Definition triv_mor (x y : Ob C) := x == y.
+Definition triv_comp (x y z : Ob C) : y == z -> x == y -> x == z.
+Proof. move=> H1 H2. by apply/transP; first apply H2. Defined.
+
+Lemma tcat_associativity : @Category.associativity_of_morphisms _ triv_mor triv_comp (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_compm0 : @Category.identity_morphism_is_right_identity _
+                                                                  triv_mor
+                                                                  (fun _ => reflP) 
+                                                                  triv_comp
+                                                                  (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+Lemma tcat_comp0m : @Category.identity_morphism_is_left_identity _
+                                                                 triv_mor
+                                                                 (fun _ => reflP)
+                                                                 triv_comp
+                                                                 (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_comp_left : @Category.compatibility_left _ triv_mor triv_comp (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_comp_right : @Category.compatibility_right _ triv_mor triv_comp (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+Notation tcat_catMixin := (CatMixin tcat_associativity tcat_compm0 tcat_comp0m tcat_comp_left tcat_comp_right).
+Definition tcat_catType := Eval hnf in CatType (Ob C) tcat_catMixin.
+End TrivialCategory.
+Notation tcat := tcat_catType.
+Definition tcatn n := tcat (catn n).
+
+Section TrivialEmmbedding.
+Variable n : nat.
+
+Definition triv_mor' (x y : nat) := x == y.
+Definition triv_id (x : nat) : triv_mor' x x.
+  apply/eqP; apply: erefl.
+Defined.
+Definition triv_comp' (x y z : nat) : y == z -> x == y -> x == z.
+Proof. by move/eqP=> -> /eqP ->. Defined.
+
+Lemma tcat_associativity' : @Category.associativity_of_morphisms _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_compm0' : @Category.identity_morphism_is_right_identity _
+                                                                  triv_mor'
+                                                                  triv_id
+                                                                  triv_comp'
+                                                                  (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+Lemma tcat_comp0m' : @Category.identity_morphism_is_left_identity _
+                                                                 triv_mor'
+                                                                 triv_id
+                                                                 triv_comp'
+                                                                 (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_comp_left' : @Category.compatibility_left _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+
+Lemma tcat_comp_right' : @Category.compatibility_right _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
+Proof. by []. Defined.
+Notation tcat_catMixin' := (CatMixin tcat_associativity' tcat_compm0' tcat_comp0m' tcat_comp_left' tcat_comp_right').
+Definition tcat_catType' := Eval hnf in CatType nat tcat_catMixin'.
+
+Definition triv_incl (t : Ob (tcatn n)) : Ob tcat_catType' := t.
+Definition triv_incl_mor (s t : Ob (tcatn n)) (f : Mor (s, t)) : Mor(triv_incl s, triv_incl t).
+Proof.
+  suff ->: s = t by apply id.
+  move: s t f=> [m i] [m' i'] [f [g p]].
+  apply: val_inj.
+  apply/eqP.
+  rewrite eqn_leq.
+  by apply/andP.
+Defined.
+Lemma triv_pres_equiv : Functor.preserve_equivalence triv_incl_mor.
+Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
+
+Lemma triv_pres_comp : Functor.preserve_composition triv_incl_mor.
+Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
+
+Lemma triv_id_id : Functor.maps_identity_to_identity triv_incl_mor.
+Proof. by move=> [m i]. Defined.
+
+Definition trivial_inclusion : Fun(tcatn n, tcat_catType') := FunMixin triv_id_id triv_pres_comp triv_pres_equiv.
+End TrivialEmmbedding.
+
+Local Notation "f == g" := (equiv_op f g).
 Canonical funs_equivType.
 Canonical nats_equivType.
 Canonical obs_equivType.
+
+(* Lemma fun_prfK C D mo mo' mm mm' *)
+(*       (i : Functor.maps_identity_to_identity mm) *)
+(*       (pc : Functor.preserve_composition mm) *)
+(*       (pe : @Functor.preserve_equivalence _ _ mo mm) *)
+(*       (i' : Functor.maps_identity_to_identity mm') *)
+(*       (pc' : Functor.preserve_composition mm') *)
+      (* (pe' : @Functor.preserve_equivalence C D mo' mm') : *)
+      (* (n : forall a, Mor(mo a, mo' a)) *)
+      (* (m : forall a, Mor(mo' a, mo a)) *)
+      (* (na : forall A A' (f : Mor (A, A')), n _ \compm mm _ _ f == mm' _ _ f \compm n _) *)
+      (* (ma : forall A A' (f : Mor (A, A')), m _ \compm mm' _ _ f == mm _ _ f \compm m _) *)
+      (* (mni : forall a, n a \compm m a == id) *)
+      (* (nmi : forall a, m a \compm n a == id) : *)
+(*   (forall a, mo a = mo' a) ->  *)
+(*   FunMixin i pc pe == FunMixin i' pc' pe'. *)
+(* Proof. *)
+(*   destruct D. *)
+(*   destruct m. *)
+(*   move=> H. *)
+(*   rewrite equivE /=. *)
+(*   set F := FunMixin i pc pe. *)
+(*   set G := FunMixin i' pc' pe'. *)
+(* have: { spF: forall X, Mor (F X, G X) | @spF (Category.id _) == id }. *)
+(* by apply (@exist _ _ (fun x => *)
+(*                         match x with *)
+(*                         | pt => id *)
+(*                         end)); apply/reflP. *)
+(* Defined. *)
+(*   apply (@ex_intro _ _ (@NatMixin _ _ F G (fun X => Category.id X: Mor (mo X, mo' X)) _)). *)
+(*   rewrite H. *)
+(*   move=> ? ? ? /=. *)
+(*   Set Printing All. *)
+(*   apply: compm_comp. *)
+(*   apply: (@ex_intro _ _ (@NatMixin _ _ G F (fun X => _: Mor (G X, F X)) _)). *)
+(*   constructor => X; by constructor. *)
+(* Defined. *)
+(* Arguments fun_prfK {_ _ _ _ _ _ _ _ _ _ _ _} _ _ {_ _ _ _}. *)
 
 Section Pushout.
 Variables C D : category.
@@ -229,56 +408,18 @@ apply: (@Isomorphisms _ _ _ F G) => //.
   - move=> ? ? X; apply: Isomorphisms; apply/symP; by apply compm0.
 Qed.
 End Opposite.
-
-Section Ordinal.
-Variable n : nat.
-(* 0 --> 1 *)
-(* |     | *)
-(* >     > *)
-(* 2 --> 3 *)
-Definition catnm (x y : ordinal n) :=
-  match x, y with
-  | Ordinal i _, Ordinal j _ =>
-    i <= j : Prop
-  end.
-
-Definition catnc
-           (x y z : ordinal n)
-           (g : catnm y z)
-           (f : catnm x y) : catnm x z.
-case: x y z f g => [x Hx] [y Hy] [z Hz] /=.
-exact: leq_trans.
+Section Opposite.
+Variables C D : category.
+Variable F : Fun(C, D).
+Definition op_fun : Fun(Op C, Op D).
+apply (@FunMixin (Op C) (Op D) F (fun x y f => 'F f)).
+by move=> ?; apply: id_id.
+by move=> ? ? ? ? ?; apply: pres_comp.
+by move=> ? ? ? ? ?; apply: pres_equiv.
 Defined.
-Definition catnm_equivMixin x y := trivial_equivMixin (catnm x y).
+End Opposite.
 
-Definition catn_id (x : ordinal n) : catnm x x.
-case: x => [x Hx] /=.
-exact: leqnn.
-Defined.
-
-Lemma catn_associativity : Category.associativity_of_morphisms catnc catnm_equivMixin.
-Proof. by []. Defined.
-
-Lemma catn_compm0 : Category.identity_morphism_is_right_identity catn_id catnc catnm_equivMixin.
-Proof. by []. Defined.
-
-Lemma catn_comp0m : Category.identity_morphism_is_left_identity catn_id catnc catnm_equivMixin.
-Proof. by []. Defined.
-
-Lemma catn_comp_left : Category.compatibility_left catnc catnm_equivMixin.
-Proof. by []. Defined.
-
-Lemma catn_comp_right : Category.compatibility_right catnc catnm_equivMixin.
-Proof. by []. Defined.
-Notation catn_catMixin := (CatMixin catn_associativity catn_compm0 catn_comp0m catn_comp_left catn_comp_right).
-Canonical catn_catType := Eval hnf in CatType (ordinal n) catn_catMixin.
-End Ordinal.
-Notation catn := catn_catType.
-Example cat0 : category := catn 0.
-Example cat1 : category := catn 1.
-Example cat2 : category := catn 2.
-Example cat4 : category := catn 4.
-Notation square := cat4.
+Notation "''Op' F" := (op_fun F) (at level 1).
 
 Definition smush C D (A : Ob D) :=
   @FunMixin C D (fun _ : Ob C => A)
@@ -357,95 +498,6 @@ by apply/reflP.
 Defined.
 End CanonicalEmmbedding2.
 
-Section TrivialCategory.
-Variable C : category.
-Local Notation "f == g" := (@equiv_op (obs_equivType C) f g).
-Definition triv_mor (x y : Ob C) := x == y.
-Definition triv_comp (x y z : Ob C) : y == z -> x == y -> x == z.
-Proof. move=> H1 H2. by apply/transP; first apply H2. Defined.
-
-Lemma tcat_associativity : @Category.associativity_of_morphisms _ triv_mor triv_comp (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-
-Lemma tcat_compm0 : @Category.identity_morphism_is_right_identity _
-                                                                  triv_mor
-                                                                  (fun _ => reflP) 
-                                                                  triv_comp
-                                                                  (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-Lemma tcat_comp0m : @Category.identity_morphism_is_left_identity _
-                                                                 triv_mor
-                                                                 (fun _ => reflP)
-                                                                 triv_comp
-                                                                 (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-
-Lemma tcat_comp_left : @Category.compatibility_left _ triv_mor triv_comp (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-
-Lemma tcat_comp_right : @Category.compatibility_right _ triv_mor triv_comp (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-Notation tcat_catMixin := (CatMixin tcat_associativity tcat_compm0 tcat_comp0m tcat_comp_left tcat_comp_right).
-Definition tcat_catType := Eval hnf in CatType (Ob C) tcat_catMixin.
-End TrivialCategory.
-Notation tcat := tcat_catType.
-Definition tcatn n := tcat (catn n).
-
-Section TrivialEmmbedding.
-Variable n : nat.
-
-Definition triv_mor' (x y : nat) := x == y.
-Definition triv_id (x : nat) : triv_mor' x x.
-  apply/eqP; apply: erefl.
-Defined.
-Definition triv_comp' (x y z : nat) : y == z -> x == y -> x == z.
-Proof. by move/eqP=> -> /eqP ->. Defined.
-
-Lemma tcat_associativity' : @Category.associativity_of_morphisms _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-
-Lemma tcat_compm0' : @Category.identity_morphism_is_right_identity _
-                                                                  triv_mor'
-                                                                  triv_id
-                                                                  triv_comp'
-                                                                  (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-Lemma tcat_comp0m' : @Category.identity_morphism_is_left_identity _
-                                                                 triv_mor'
-                                                                 triv_id
-                                                                 triv_comp'
-                                                                 (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-
-Lemma tcat_comp_left' : @Category.compatibility_left _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-
-Lemma tcat_comp_right' : @Category.compatibility_right _ triv_mor' triv_comp' (fun x y => trivial_equivMixin (x == y)).
-Proof. by []. Defined.
-Notation tcat_catMixin' := (CatMixin tcat_associativity' tcat_compm0' tcat_comp0m' tcat_comp_left' tcat_comp_right').
-Definition tcat_catType' := Eval hnf in CatType nat tcat_catMixin'.
-
-Definition triv_incl (t : Ob (tcatn n)) : Ob tcat_catType' := t.
-Definition triv_incl_mor (s t : Ob (tcatn n)) (f : Mor (s, t)) : Mor(triv_incl s, triv_incl t).
-Proof.
-  suff ->: s = t by apply id.
-  move: s t f=> [m i] [m' i'] [f [g p]].
-  apply: val_inj.
-  apply/eqP.
-  rewrite eqn_leq.
-  by apply/andP.
-Defined.
-Lemma triv_pres_equiv : Functor.preserve_equivalence triv_incl_mor.
-Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
-
-Lemma triv_pres_comp : Functor.preserve_composition triv_incl_mor.
-Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
-
-Lemma triv_id_id : Functor.maps_identity_to_identity triv_incl_mor.
-Proof. by move=> [m i]. Defined.
-
-Definition trivial_inclusion : Fun(tcatn n, tcat_catType') := FunMixin triv_id_id triv_pres_comp triv_pres_equiv.
-End TrivialEmmbedding.
 (* because of the silly unify problem *)
 Section Product.
 Variable C D : category.
@@ -628,6 +680,144 @@ apply: Isomorphisms; do !apply: ex_intro; last first.
 Qed.
 End Point.
 
+Section Curry.
+Local Notation "f == g" := (equiv_op f g).
+Variable C D E : category.
+Section CurryOb.
+Variable x : Fun(C * D, E).
+Section CurryObOb.
+Variable c : Ob C.
+Definition curry_obob : Fun (D, E).
+set F := (fun d1 d2 (f : Mor(d1, d2))
+          => 'x ((id, f) : Mor((c, d1), (c, d2)))).
+apply: (@FunMixin _ _ _ F _ _ _).
+move=> ?; apply: id_id.
+move=> ? ? ? f g.
+apply: Congruence.etrans; last apply: pres_comp.
+apply: pres_equiv.
+apply: Congruence.subst_left.
+by move=> ? ? ? ? H1 H2; split.
+apply: compm0.
+move=> ? ? ? ? H.
+apply: pres_equiv.
+by split => //; apply/reflP.
+Defined.
+End CurryObOb.
+Section CurryObMor.
+Definition curry_obmor c1 c2 (f : Mor(c1, c2)) : Nat(curry_obob c1, curry_obob c2).
+set N := (fun d => 'x ((f, id) : Mor((c1, d), (c2, d)))
+                   : Mor (curry_obob c1 d, curry_obob c2 d)).
+apply (@NatMixin _ _ _ _ N).
+move=> ? ? g.
+apply: Congruence.etrans => /=.
+apply/symP; apply pres_comp.
+apply: Congruence.etrans; last apply pres_comp.
+apply: pres_equiv; split.
+ apply: Congruence.etrans; last apply: comp0m.
+ apply/symP; apply: compm0.
+apply: Congruence.etrans; last apply: compm0.
+apply/symP; apply: comp0m.
+Defined.
+End CurryObMor.
+Definition curry_ob : Fun(C, Fun (D, E)).
+apply (@FunMixin _ _ curry_obob curry_obmor).
++ move=> ? ?; by apply: Congruence.etrans; first apply: id_id; apply/reflP.
++ move=> ? ? ? ? ? ?.
+  apply: Congruence.etrans; last apply: pres_comp.
+  apply: pres_equiv; split; first by apply/reflP.
+  by apply: Congruence.etrans; last apply: compm0; apply/reflP.
++ move=> ? ? ? ? ? ?.
+  by apply: pres_equiv; split; last by apply/reflP.
+Defined.
+End CurryOb.
+Section CurryMor.
+Variables x y : Fun(C * D, E).
+Variable f : Mor(x, y).
+Section CurryMorMor.
+Variable c : Ob C.
+Definition curry_mormor : Nat((curry_ob x) c, (curry_ob y) c).
+apply (@NatMixin _ _ _ _ (fun d => f (c, d) : Mor(curry_ob x c d, curry_ob y c d))).
+by move=> ? ? ? /=; apply: naturality.
+Defined.
+End CurryMorMor.
+Definition curry_mor : Nat(curry_ob x, curry_ob y).
+apply (@NatMixin _ _ (curry_ob x) (curry_ob y) curry_mormor).
+by move=> ? ? ? ? /=; apply: naturality.
+Defined.
+End CurryMor.
+Definition curry : Fun(Fun(C * D, E), Fun(C, Fun (D, E))).
+apply (@FunMixin _ _ curry_ob curry_mor).
+by move=> ? ? ?; apply/reflP.
+by move=> ? ? ? ? ? ? ?; apply/reflP.
+move=> ? ? ? ? H c d; exact (H (c, d)).
+Defined.
+
+Section UnCurryOb.
+Variable x : Fun(C, Fun(D, E)).
+Definition uncurry_obob cd : Ob E := x cd.1 cd.2.
+Definition uncurry_obmor cd1 cd2 (f : Mor(cd1, cd2)) := ('(x cd2.1) f.2) \compm (('x f.1) cd1.2).
+Definition uncurry_ob : Fun(C * D, E).
+apply (@FunMixin _ _ uncurry_obob uncurry_obmor).
++ move=> [] a b.
+  apply: Congruence.etrans; last (apply/symP; apply: compm0).
+  apply: compm_comp; first by apply id_id.
+  have: ('x id) == id by move=> ?; apply id_id. apply.
++ move=> [??] [??] [??] [f1 f2] [g1 g2].
+  apply: Congruence.etrans; last first.
+  apply: compm_comp; apply naturality.
+  apply: Congruence.etrans; last (apply/symP; apply: compmA).
+  apply: Congruence.etrans; last first.
+  apply: subst_right.
+  apply: compmA.
+  apply: Congruence.etrans; last first.
+  apply: subst_right.
+  apply: subst_left.
+  apply: naturality.
+  apply: Congruence.etrans; last first.
+  apply: subst_right.
+  apply/symP; apply: compmA.
+  apply: Congruence.etrans; last apply: compmA.
+  apply: Congruence.etrans.
+  apply/symP; apply: naturality.
+  apply: compm_comp; last first.
+  apply: pres_comp.
+  have : (' x (g1 \compm f1) == (' x g1) \compn (' x f1))
+   by (apply: Congruence.etrans; last apply: pres_comp); apply/reflP.
+  apply.
++ move=> [??] [??] [f ?] [g ?] [??].
+  apply: compm_comp; first by apply: pres_equiv.
+  have : 'x f == 'x g by apply pres_equiv.
+  apply.
+Defined.
+End UnCurryOb.
+Section UnCurryMor.
+Variables x y : Fun(C, Fun(D, E)).
+Variable f : Mor(x, y).
+Definition uncurry_mormor cd : Mor(uncurry_ob x cd, uncurry_ob y cd) := f cd.1 cd.2.
+Definition uncurry_mor : Nat(uncurry_ob x, uncurry_ob y).
+apply (@NatMixin _ _ (uncurry_ob x) (uncurry_ob y) uncurry_mormor).
+move=> [??] [??] [g h].
+apply: Congruence.etrans; first (apply/symP; apply: compmA).
+apply: Congruence.etrans; first (apply: subst_left; apply: naturality).
+apply: Congruence.etrans; last (apply: subst_left; apply: naturality).
+apply: Congruence.etrans; last (apply: subst_left; apply/symP; apply: naturality).
+apply: Congruence.etrans; first apply: compmA.
+apply: Congruence.etrans; last (apply/symP; apply: compmA).
+apply: subst_right.
+have: f _ \compm 'x g == 'y g \compm f _ by apply naturality.
+apply.
+Defined.
+End UnCurryMor.
+Definition uncurry : Fun(Fun(C, Fun (D, E)), Fun(C * D, E)).
+apply (@FunMixin _ _ uncurry_ob uncurry_mor).
++ move=> ? ?; apply/reflP.
++ move=> ? ? ? ? ? ?; apply/reflP.
++ move=> ? ? ? ? H c; exact (H c.1 c.2).
+Defined.
+End Curry.
+
+(* Lemma curryK C D E :@isomorphisms cats _ _ (curry C D E) (uncurry C D E). *)
+
 Definition final_object C :=
   limit (canonical_embedding0 C).
 Definition kernel C (A B : Ob C) (f : Mor(A, B)) :=
@@ -675,13 +865,49 @@ Definition hom := FunMixin hom_id_id hom_pres_comp hom_pres_equiv.
 Canonical hom_funType := Eval hnf in FunType _ _ hom.
 End Hom.
 
-Local Notation "f == g" := (equiv_op f g).
+Section Perm.
+Variables C D : category.
+Definition perm_ob (cd : Ob C * Ob D) := (cd.2, cd.1).
+Definition perm : Fun(C * D, D * C).
+apply (@FunMixin _ _ perm_ob (fun cd cd' (f : Mor(cd, cd')) => (f.2, f.1))).
+move=> ?.
+apply/reflP.
+move=> ? ? ? ? ?.
+apply/reflP.
+by move=> ? ? ? ? [] ? ?; split.
+Defined.
+End Perm.
+(* Section Perm. *)
+(* Lemma permK C D : @isomorphisms cats (C * D) (D * C) (@perm C D) (@perm D C). *)
+(* End Perm. *)
 
 Module Adjunction.
 Section Axioms.
 Variables C D : category.
 Variable F : Fun (C, D).
 Variable G : Fun (D, C).
+Local Notation Hom H := (uncurry _ _ _ (curry _ _ _ (hom _) \compf H)).
+Check curry.
+Check uncurry.
+Check (Hom F).
+Check 'Op (Hom G).
+
+     Fun (D * Op C, types)
+     Fun (C * Op D, types)
+Check (curry _ _ _ (hom _) \compf G).
+(* Check ((curry _ _ _ (hom _ \compf perm _ _))). *)
+Check (uncurry _ _ _  \compf perm _ _).
+Check (uncurry _ _ _ (curry _ _ _ (hom _) \compf G) \compf perm _ _).
+Check (curry _ _ _ (hom _)).
+Check (Hom G \compf perm _ _).
+Check uncurry.
+Check (curry _ _ _ (hom _)).
+Check (uncurry _ _ _ (curry _ _ _ (hom _))).
+Check (uncurry _ _ _ (hom _)).
+Check (curry _ _ _ (uncurry _ _ _ (hom _) \compf G)).
+Local Notation Hom' H := 
+Check Nat(Hom F, Hom G).
+Check (forall X Y, Mor(F X, Y)).
 Variable n : forall X Y, Mor (F X, Y) -> Mor (X, G Y).
 
 Local Definition adjunction_axiom X Y :=

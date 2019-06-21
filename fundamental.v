@@ -35,10 +35,7 @@ Definition compatibility_right :=
 End Axioms.
 Structure mixin_of objects :=
   Mixin {
-      morphisms : _;
-      id: _;
-      compm: _;
-      equiv: _;
+      morphisms; id; compm; equiv;
       compmA: @associativity_of_morphisms objects morphisms compm equiv;
       compm0 : @identity_morphism_is_right_identity objects morphisms id compm equiv;
       comp0m : @identity_morphism_is_left_identity objects morphisms id compm equiv;
@@ -89,8 +86,7 @@ End Notations.
 
 Module TotalEquiv.
 Import Notations.
-Variable C : category.
-Structure total :=
+Structure total (C : category) :=
   TotalEquiv
     { total_dom : Ob C;
       total_cod : Ob C;
@@ -101,7 +97,7 @@ Local Notation tm := total_mor.
 Coercion TotalEquiv : morphisms >-> total.
 Local Notation "f == g" := (@equiv_op (EquivType _ (equiv _ _)) f g).
 
-Definition total_op (f g : total) :=
+Definition total_op C (f g : total C) :=
   let fA := td f in
   let fB := tc f in
   let fm := tm f in
@@ -115,16 +111,16 @@ Definition total_op (f g : total) :=
     match fgB in (_ = y) return Mor (gA, y) with
     | erefl => gm
     end.
-Local Arguments total_op f g /.
+Local Arguments total_op C f g /.
 
-Lemma total_reflP : Equivalence.reflexivity total_op.
+Lemma total_reflP C : Equivalence.reflexivity (@total_op C).
 Proof.
   move=> [fA fB f] /=.
   apply: (ex_intro _ (erefl fA)).
   apply: (ex_intro _ (erefl fB)).
   apply: reflP.
 Qed.
-Lemma total_symP : Equivalence.symmetricity total_op.
+Lemma total_symP C : Equivalence.symmetricity (@total_op C).
 Proof.
   move=> [fA fB f] [gA gB g]; split;
   move=> [] /= fgA [] fgB H;
@@ -133,7 +129,7 @@ Proof.
   move: H; destruct fgA, fgB => /= H;
   by apply/symP.
 Qed.
-Lemma total_transP : Equivalence.transitivity total_op.
+Lemma total_transP C : Equivalence.transitivity (@total_op C).
 Proof.
   move=> [fA fB f] [gA gB g] [hA hB h] /= [] fgA [] fgB H1 [] ghA [] ghB H2.
   apply: (ex_intro _ (eq_trans fgA ghA)).
@@ -141,11 +137,11 @@ Proof.
   destruct fgA, ghA, fgB, ghB => /=.
   by apply/transP; first apply: H1.
 Qed.
-Definition total_equivMixin := EquivMixin total_symP total_transP total_reflP.
-Canonical total_equivType := Eval hnf in EquivType total total_equivMixin.
-Local Notation "f ~ g" := (@equiv_op total_equivType (TotalEquiv f) (TotalEquiv g)) (at level 30).
+Definition total_equivMixin C := EquivMixin (@total_symP C) (@total_transP C) (@total_reflP C).
+Canonical total_equivType C := Eval hnf in EquivType (total C) (total_equivMixin C).
+Local Notation "f ~ g" := (@equiv_op (total_equivType _) (TotalEquiv f) (TotalEquiv g)) (at level 30).
 
-Lemma suff_partial (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) : f == g -> f ~ g.
+Lemma suff_partial C (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) : f == g -> f ~ g.
 Proof.
 rewrite !equivE /= => H.
 apply: (ex_intro _ erefl).
@@ -173,7 +169,7 @@ Proof.
   apply: Equivalence.trans;
     first by apply comp_left, H2.
   by apply comp_right, H1.
-Qed.
+Defined.
 Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
 Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
 
@@ -229,8 +225,7 @@ End Axioms.
 
 Structure mixin_of dom cod :=
   Mixin {
-      map_of_objects :> _;
-      map_of_morphisms : _;
+      map_of_objects :> _; map_of_morphisms;
       id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
       pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
       pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
@@ -252,6 +247,8 @@ End ClassDef.
 
 Definition app_fun dom cod (f : mixin_of dom cod) := map_of_objects f.
 Definition app_fun_mor dom cod (f : mixin_of dom cod) := map_of_morphisms f.
+Arguments app_fun /.
+Arguments app_fun_mor /.
 
 Module Exports.
 Notation "' F" := (@app_fun_mor _ _ F _ _) (at level 1).
@@ -323,7 +320,7 @@ Module NaturalTransformation.
 Section Axioms.
 Variables C D : category.
 Variables F G : Fun (C, D).
-Variable map : forall X, Mor (F(X), G(X)).
+Variable map : forall X, Mor (F X, G X).
 Arguments map {X}.
 Definition naturality_axiom :=
   forall A A' (f : Mor (A, A')), map \compm 'F f == 'G f \compm map.
