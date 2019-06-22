@@ -65,7 +65,7 @@ Notation id := (@Category.id _ (class _) _).
 Notation morphisms := morphisms.
 Notation compm := compm.
 Arguments compm {_ _ A B C} _ _ /.
-Definition equiv C := (equiv (class C)).
+Notation equiv C := (equiv (class C)).
 Notation compmA := compmA.
 Notation compm0 := compm0.
 Notation comp0m := comp0m.
@@ -78,9 +78,9 @@ Notation "'Ob' C" := (sort C) (at level 1).
 Notation "'Mor' ( M , N )" := (@morphisms _ (class _) M N) (at level 5).
 Notation "[ 'CatMixin' 'of' T ]" := (class _ : mixin_of T)
   (at level 0, format "[ 'CatMixin'  'of'  T ]") : form_scope.
-Notation "[ 'category' 'of' T 'for' C ]" := (@clone T C _ idfun id)
+Notation "[ 'category' 'of' T 'for' C ]" := (@clone T C _ idfun ssrfun.id)
   (at level 0, format "[ 'category'  'of'  T  'for'  C ]") : form_scope.
-Notation "[ 'category' 'of' T ]" := (@clone T _ _ id id)
+Notation "[ 'category' 'of' T ]" := (@clone T _ _ ssrfun.id ssrfun.id)
   (at level 0, format "[ 'category'  'of'  T ]") : form_scope.
 End Notations.
 
@@ -95,7 +95,7 @@ Local Notation td := total_dom.
 Local Notation tc := total_cod.
 Local Notation tm := total_mor.
 Coercion TotalEquiv : morphisms >-> total.
-Local Notation "f == g" := (@equiv_op (EquivType _ (equiv _ _)) f g).
+Local Notation "f == g" := (@equiv_op (EquivType _ (equiv _ _ _)) f g).
 
 Definition total_op C (f g : total C) :=
   let fA := td f in
@@ -152,8 +152,8 @@ End TotalEquiv.
 Module Exports.
 Include Notations.
 Include TotalEquiv.
-Canonical partial_equivType C (A B : Ob C) :=
-  Eval hnf in EquivType (Mor (A, B)) (equiv A B).
+Canonical partial_equivType T (C : mixin_of T) (A B : T) :=
+  Eval hnf in EquivType _ (Category.equiv C A B).
 End Exports.
 End Category.
 Export Category.Exports.
@@ -181,122 +181,147 @@ apply: Congruence.etrans; last by apply H.
 apply comp0m.
 Qed.
 
-(* Section PartialEquiv. *)
-(* Variable C : category. *)
-(* Variable cat_eqMixin_ob : Equality.mixin_of (Ob C). *)
-(* Variable cat_eqMixin_mor : Equality.mixin_of (total C). *)
-(* Variable totalE : *)
-(*   forall (A B : Ob C) (f g : Mor(A, B)), *)
-(*     @eq_op (EqType _ cat_eqMixin_mor) (TotalEquiv f) (TotalEquiv g) *)
-(*     <-> @equiv_op (EquivType _ (Category.equiv _ _ _)) f g. *)
-(* Local Notation "f == g" := (@eq_op (EqType _ cat_eqMixin_ob) f g). *)
-(* Local Notation td := total_dom. *)
-(* Local Notation tc := total_cod. *)
-(* Local Notation tm := total_mor. *)
+Section Isomorphism.
+Inductive isomorphisms C (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
+  Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
 
-(* Lemma totalE (f : Mor (A, B)) (g : Mor (A, B)) : *)
-(*   @equiv_op (total_equivType f g) (TotalEquiv f) (TotalEquiv g) <-> @equiv_op (Mor (A, B)) f g. *)
-(* Proof. *)
-(* split. *)
-(* + case=> fgA [] fgB /=. *)
-(*   dependent destruction fgA. *)
-(*   by dependent destruction fgB. *)
-(* + rewrite !equivE /= => H. *)
-(*   apply: (ex_intro _ erefl). *)
-(*   by apply: (ex_intro _ erefl). *)
-(* Qed. *)
-(* End PartialEquiv. *)
+Inductive pairing S T (P : S -> T -> Prop) : Type :=
+  Pairing : forall f g, P f g -> pairing P.
+
+Coercion p2p S T P (p : @pairing S T P) :=
+  match p with
+  | Pairing f _ _ => f
+  end.
+
+Arguments isomorphisms {_ _ _} _ _.
+Arguments Isomorphisms {_ _ _} _ _ _ _.
+Arguments pairing {_ _} _.
+Arguments Pairing {_ _ _} _ _.
+
+Section LocalArg.
+Variable C : category.
+Local Notation piso :=
+  (fun A B => pairing (@isomorphisms C A B)).
+Lemma piso_sym :
+  Equivalence.symmetricity piso.
+Proof.
+move => ? ?.
+split; move=> [N M] [H1 H2];
+apply (@Pairing _ _ _ M N);
+by constructor.
+Defined.
+
+Lemma piso_refl :
+  Equivalence.reflexivity piso.
+Proof.
+move => ?; apply (Pairing id id).
+by constructor; apply/symP; apply comp0m.
+Defined.
+
+Lemma piso_trans :
+  Equivalence.transitivity piso.
+Proof.
+move => ? ? ?.
+move => [f1 g1] [H11 H12] [f2 g2] [H21 H22].
+apply (Pairing (f2 \compm f1) (g1 \compm g2)).
+constructor;
+(apply: Congruence.etrans; first by apply: compmA);
+[ apply: Congruence.etrans; last by apply H11
+| apply: Congruence.etrans; last by apply H22 ];
+apply subst_right;
+(apply/symP; apply: Congruence.etrans; last by apply compmA);
+(apply: Congruence.etrans; first (by apply: comp0m));
+apply subst_left; by apply/symP.
+Defined.
+End LocalArg.
+End Isomorphism.
+Definition obs_equivMixin C := (EquivMixin (@piso_sym C) (@piso_trans C) (@piso_refl C)).
+Definition obs_equivType C := Eval hnf in EquivType (Ob C) (obs_equivMixin C).
 
 Module Functor.
 Section Axioms.
-Variables domain codomain : category.
-Variable map_of_objects : Ob domain -> Ob codomain.
-Variable map_of_morphisms : forall A B,
-    Mor (A, B) -> Mor (map_of_objects A, map_of_objects B).
+Variables domain codomain : Type.
+Variable dom_cat : Category.mixin_of domain.
+Variable cod_cat : Category.mixin_of codomain.
+Variable map_of_objects : domain -> codomain.
+Variable map_of_morphisms :
+ forall A B, morphisms dom_cat A B ->
+ morphisms cod_cat (map_of_objects A) (map_of_objects B).
 Definition maps_identity_to_identity :=
-  forall A, @map_of_morphisms A A id == id.
+  forall A, @map_of_morphisms A A (Category.id A) == (Category.id (map_of_objects A)).
 Definition preserve_composition :=
-  forall A B C (f : Mor (A, B)) (g : Mor (B, C)),
+  forall A B C (f : morphisms dom_cat A B) (g : morphisms dom_cat B C),
   map_of_morphisms (g \compm f) == map_of_morphisms g \compm (map_of_morphisms f).
 Definition preserve_equivalence :=
-  forall A B (f f' : Mor (A, B)),
+  forall A B (f f' : morphisms dom_cat A B),
     f == f' -> map_of_morphisms f == map_of_morphisms f'.
 End Axioms.
 
-Structure mixin_of dom cod :=
+Structure mixin_of dom cod dm cm map_of_objects :=
   Mixin {
-      map_of_objects :> _; map_of_morphisms;
-      id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
-      pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
-      pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
+      map_of_morphisms;
+      id_id : @maps_identity_to_identity dom cod dm cm map_of_objects map_of_morphisms;
+      pres_comp : @preserve_composition dom cod dm cm map_of_objects map_of_morphisms;
+      pres_equiv : @preserve_equivalence dom cod dm cm map_of_objects map_of_morphisms;
     }.
-
 Local Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Structure type := Pack {dom; cod; _: class_of dom cod; _ : Type}.
-Variables (domT codT : category) (cT : type).
-Definition class := let: Pack _ _ c _ := cT return class_of (dom cT) (cod cT) in c.
-Definition pack c := @Pack domT codT c (Ob domT -> Ob codT).
-Definition clone
-           (c : mixin_of domT codT)
-           (_ : dom cT -> domT)
-           (_ : cod cT -> codT)
-           (_ : phant_id (pack c) cT) := pack c.
+Structure type dom cod (domc codc : category) :=
+  Pack {
+      map;
+      _: @class_of dom cod (Category.class domc) (Category.class codc) map;
+      (* _ : @equiv_op (obs_equivType domc) dom (Ob domc); *)
+      (* _ : @equiv_op (obs_equivType codc) cod (Ob codc); *)
+    }.
+Variables (domT codT : category)
+          (cT : @type domT codT (Category.class domT) (Category.class codT))
+          (mapT : Ob domT -> Ob codT).
+Definition class := let: Pack _ c _ := cT return @class_of _ _ _ _ (map cT) in c.
+Definition pack c := @Pack domT codT (Category.class domT) (Category.class codT) mapT c (Ob domT -> Ob codT).
+Definition clone (c : mixin_of _ _ mapT) (_ : phant_id (pack c) cT) := pack c.
 End ClassDef.
 
-Definition app_fun dom cod (f : mixin_of dom cod) := map_of_objects f.
-Definition app_fun_mor dom cod (f : mixin_of dom cod) := map_of_morphisms f.
-Arguments app_fun /.
+Definition app_fun_mor (dom cod : category) (f : type (Category.class dom) (Category.class cod)) :=
+  @map_of_morphisms _ _ _ _ _ (class f).
 Arguments app_fun_mor /.
 
 Module Exports.
 Notation "' F" := (@app_fun_mor _ _ F _ _) (at level 1).
-Coercion class: type >-> mixin_of.
-Coercion app_fun: mixin_of >-> Funclass.
+Coercion map: type >-> Funclass.
 Notation functor := type.
 Notation FunMixin := Mixin.
-Notation FunType D C m := (@pack D C m).
-Notation id_id := id_id.
-Notation pres_comp := pres_comp.
-Notation pres_equiv := pres_equiv.
-Notation "[ 'FunMixin' 'of' T 'to' S ]" := (class _ : mixin_of T S)
-  (at level 0, format "[ 'FunMixin'  'of'  T 'to' S ]") : form_scope.
-Notation "[ 'functor' 'of' T 'to' S 'for' C ]" := (@clone T S C _ idfun idfun ssrfun.id)
-  (at level 0, format "[ 'functor'  'of'  T  'to' S 'for'  C ]") : form_scope.
-Notation "[ 'functor' 'of' T 'to' S ]" := (@clone T S _ _ ssrfun.id ssrfun.id ssrfun.id)
-  (at level 0, format "[ 'functor'  'of'  T 'to' S ]") : form_scope.
-Notation "'Fun' ( C , D )" := (@mixin_of C D).
+Notation FunType C D m := (@pack C D _ m).
+Notation id_id := (id_id (class _)).
+Notation pres_comp := (pres_comp (class _)).
+Notation pres_equiv := (pres_equiv (class _)).
+Notation "'Fun' ( C , D )" := (@type C D [ CatMixin of C ] [ CatMixin of D ]).
 Section Composition.
 Variables (C D E : category) (G : Fun (D, E)) (F : Fun (C, D)).
-Definition compfo x := G (F x).
-Definition compfm A B (f : Mor (A, B)) := 'G (' F f).
-Lemma compf_id_id : @maps_identity_to_identity _ _ compfo compfm.
+Definition compfm A B (f : Mor(A, B)) : Mor((G \o F) A, (G \o F) B) := 'G ('F f).
+Lemma compf_id_id : maps_identity_to_identity compfm.
 Proof.
 move=> ?.
 apply: Congruence.etrans;
  last by apply: id_id.
 by apply pres_equiv, id_id.
 Defined.
-Lemma compf_pres_comp : @preserve_composition _ _ compfo compfm.
+Lemma compf_pres_comp : preserve_composition compfm.
 Proof.
 move=> ? ? ? ? ?.
 apply: Congruence.etrans;
  last by apply: pres_comp.
 by apply pres_equiv, pres_comp.
 Defined.
-Lemma compf_pres_equiv : @preserve_equivalence _ _ compfo compfm.
+Lemma compf_pres_equiv : preserve_equivalence compfm.
 Proof.
 move=>? ? ? ? ?;
  by do !apply: pres_equiv.
 Defined.
-Definition compf :=
-  @FunMixin _ _
-          compfo
-          compfm
-          compf_id_id
-          compf_pres_comp
-          compf_pres_equiv.
+Definition compf_Mixin :=
+  FunMixin compf_id_id compf_pres_comp compf_pres_equiv.
+Definition compf := FunType _ _ compf_Mixin.
+
 End Composition.
 Notation "F \compf G" := (compf F G) (at level 40).
 Section Identity.
@@ -305,12 +330,8 @@ Definition idfm (A B : Ob C) (f : Mor (A, B)) := f.
 Definition idf_id_id := (fun _  => reflP) : maps_identity_to_identity idfm.
 Definition idf_pres_comp := (fun _ _ _ _ _ => reflP) : preserve_composition idfm.
 Definition idf_pres_equiv := (fun _ _ _ _ => ssrfun.id) : preserve_equivalence idfm.
-Definition idf :=
-  @FunMixin _ _ _
-          idfm
-          idf_id_id
-          idf_pres_comp
-          idf_pres_equiv.
+Definition idf_Mixin := FunMixin idf_id_id idf_pres_comp idf_pres_equiv.
+Definition idf := FunType _ _ idf_Mixin.
 End Identity.
 End Exports.
 End Functor.
@@ -326,7 +347,7 @@ Definition naturality_axiom :=
   forall A A' (f : Mor (A, A')), map \compm 'F f == 'G f \compm map.
 End Axioms.
 
-Structure mixin_of C D (F G : Fun (C, D)) :=
+Structure mixin_of (C D : category) (F G : Fun (C, D)) :=
   Mixin {
       natural_map :> _;
       naturality : @naturality_axiom C D F G natural_map;
@@ -347,6 +368,7 @@ Definition clone
 End ClassDef.
 
 Definition app_nat dom cod f g (n : @mixin_of dom cod f g) := natural_map n.
+Arguments app_nat /.
 
 Module Exports.
 Notation "'Nat' ( M , N )" := (@mixin_of _ _ M N) (at level 5).
@@ -413,7 +435,7 @@ Defined.
 Definition compfn :=
   @NatMixin C E (H \compf F) (H \compf G) compfn_map compfn_naturality.
 End Composition.
-Notation "F \compfn N" := (compfn F N)  (at level 40).
+Notation "F \compfn N" := (compfn F N) (at level 40).
 Section Composition.
 Variables C D E : category.
 Variables F G : Fun (D, E).
@@ -438,124 +460,124 @@ Inductive isomorphisms C (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
   Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
 
 Inductive natural_isomorphisms
-          C D (F G : Fun (C, D))
+          (C D : category) (F G : Fun (C, D))
           (N : Nat (F, G)) (M : Nat (G, F)) : Prop :=
   NaturalIsomorphisms :
     (forall (X : Ob C), isomorphisms (N X) (M X)) -> 
     natural_isomorphisms N M.
 
+Inductive pairing S T (P : S -> T -> Prop) : Prop :=
+  Pairing : forall f g, P f g -> pairing P.
+
 Arguments isomorphisms {_ _ _} _ _.
 Arguments Isomorphisms {_ _ _} _ _ _ _.
 Arguments natural_isomorphisms {_ _ _ _} _ _.
 Arguments NaturalIsomorphisms {_ _ _ _} _ _ _.
+Arguments pairing {_ _} _.
+Arguments Pairing {_ _ _} _ _.
 
 Section LocalArg.
 Variable C : category.
-Local Notation iti :=
-  (fun (A B : Ob C) =>
-     exists (f : Mor (A, B)) g, isomorphisms f g).
-Lemma iti_sym :
-  Equivalence.symmetricity iti.
+Local Notation piso :=
+  (fun A B => pairing (@isomorphisms C A B)).
+Lemma piso_sym :
+  Equivalence.symmetricity piso.
 Proof.
-  move => ? ?.
-  split; move=> [N] [M] [H1 H2];
-  do !apply: ex_intro;
-  by apply (@Isomorphisms _ _ _ M N H2 H1).
+move => ? ?.
+split; move=> [N M] [H1 H2];
+apply (@Pairing _ _ _ M N);
+by constructor.
 Defined.
 
-Lemma iti_refl :
-  Equivalence.reflexivity iti.
+Lemma piso_refl :
+  Equivalence.reflexivity piso.
 Proof.
-  move => ?; do !apply: ex_intro.
-  apply: (@Isomorphisms _ _ _ id id _ _);
-  apply/symP => /=;
-  by apply comp0m.
+move => ?; apply (Pairing id id).
+by constructor; apply/symP; apply comp0m.
 Defined.
 
-Lemma iti_trans :
-  Equivalence.transitivity iti.
+Lemma piso_trans :
+  Equivalence.transitivity piso.
 Proof.
-  move => ? ? ?.
-  move => [f1] [g1] [H11 H12] [f2] [g2] [H21 H22];
-  do !apply: ex_intro;
-  apply (@Isomorphisms _ _ _ (f2 \compm f1) (g1 \compm g2));
-  (apply: Congruence.etrans; first by apply: compmA);
-  [ apply: Congruence.etrans; last by apply H11
-  | apply: Congruence.etrans; last by apply H22 ];
-  apply subst_right;
-  (apply/symP; apply: Congruence.etrans; last by apply compmA);
-  (apply: Congruence.etrans; first (by apply: comp0m));
-  apply subst_left; by apply/symP.
+move => ? ? ?.
+move => [f1 g1] [H11 H12] [f2 g2] [H21 H22].
+apply (Pairing (f2 \compm f1) (g1 \compm g2)).
+constructor;
+(apply: Congruence.etrans; first by apply: compmA);
+[ apply: Congruence.etrans; last by apply H11
+| apply: Congruence.etrans; last by apply H22 ];
+apply subst_right;
+(apply/symP; apply: Congruence.etrans; last by apply compmA);
+(apply: Congruence.etrans; first (by apply: comp0m));
+apply subst_left; by apply/symP.
 Defined.
 End LocalArg.
 
 Section LocalArg.
 Variables C D : category.
-Local Notation itn :=
-  (fun (F G : Fun (C, D)) => 
-     exists (N : Nat (F, G)) M, natural_isomorphisms N M).
-Lemma itn_sym :
-  Equivalence.symmetricity itn.
+Local Notation pniso :=
+  (fun F G => (pairing (@natural_isomorphisms C D F G))).
+Lemma pniso_sym :
+  Equivalence.symmetricity pniso.
 Proof.
-  move => ? ?.
-  split; move=> [N] [M] [H];
-  do !apply: ex_intro;
-  apply: (@NaturalIsomorphisms _ _ _ _ M N) => X;
-  by case: (H X).
+move => ? ?.
+split; move=> [N M] [H];
+apply (Pairing M N);
+constructor => X;
+by constructor; case: (H X).
 Defined.
 
-Lemma itn_refl :
-  Equivalence.reflexivity itn.
+Lemma pniso_refl :
+  Equivalence.reflexivity pniso.
 Proof.
-  move => X.
-  do !apply: ex_intro.
-  apply (@NaturalIsomorphisms _ _ _ _ (idn X) (idn X)) => x.
-  apply: Isomorphisms => /=;
-  apply/symP; by apply comp0m.
+move => X; apply: Pairing.
+apply (@NaturalIsomorphisms _ _ _ _ (idn X) (idn X)) => x.
+apply: Isomorphisms => /=;
+apply/symP; by apply comp0m.
 Defined.
 
-Lemma itn_trans :
-  Equivalence.transitivity itn.
+Lemma pniso_trans :
+  Equivalence.transitivity pniso.
 Proof.
-  move => ? ? ?.
-  move => [N1] [M1] [H1] [N2] [M2] [H2];
-  do !apply: ex_intro;
-  apply (@NaturalIsomorphisms _ _ _ _ (N2 \compn N1) (M1 \compn M2)) => /= X;
-  apply: Isomorphisms => /=;
-  case: (H1 X) => /= [H11 ?];
-  case: (H2 X) => /= [? H22];
-  (apply: Congruence.etrans; first by apply: compmA);
-  [ apply: Congruence.etrans; last by apply H11
-  | apply: Congruence.etrans; last by apply H22 ];
-  apply subst_right => /=;
-  (apply/symP; apply: Congruence.etrans; last by apply compmA);
-  (apply: Congruence.etrans; first (by apply: comp0m));
-  apply subst_left; by apply/symP.
+move => ? ? ?.
+move => [N1 M1] [H1] [N2 M2] [H2];
+apply: Pairing;
+apply (@NaturalIsomorphisms _ _ _ _ (N2 \compn N1) (M1 \compn M2)) => /= X;
+apply: Isomorphisms => /=;
+case: (H1 X) => /= [H11 ?];
+case: (H2 X) => /= [? H22];
+(apply: Congruence.etrans; first by apply: compmA);
+[ apply: Congruence.etrans; last by apply H11
+| apply: Congruence.etrans; last by apply H22 ];
+apply subst_right => /=;
+(apply/symP; apply: Congruence.etrans; last by apply compmA);
+(apply: Congruence.etrans; first (by apply: comp0m));
+apply subst_left; by apply/symP.
 Defined.
 End LocalArg.
 
 Section LocalArg.
 Variables C D : category.
 Variables F G : Fun (C, D).
-Local Notation eqn :=
+Local Notation fniso :=
   (fun (N : Nat (F, G)) (M : Nat (F, G))
    =>  forall X, N X == M X).
-Lemma eqn_sym :
-  Equivalence.symmetricity eqn.
+Lemma fniso_sym :
+  Equivalence.symmetricity fniso.
 Proof.
   move => ? ?.
   split => ? ?; by apply/symP.
 Defined.
 
-Lemma eqn_refl :
-  Equivalence.reflexivity eqn.
+Lemma fniso_refl :
+  Equivalence.reflexivity fniso.
 Proof.
   move => ? ?.
   by apply/reflP.
 Defined.
 
-Lemma eqn_trans :
-  Equivalence.transitivity eqn.
+Lemma fniso_trans :
+  Equivalence.transitivity fniso.
 Proof.
   move => ? ? ? H ? ?.
   by (apply/transP; first by apply: H).
@@ -565,46 +587,48 @@ End LocalArg.
 Module Exports.
 Notation isomorphisms := isomorphisms.
 Notation Isomorphisms := Isomorphisms.
+Notation pairing := pairing.
+Notation Pairing := Pairing.
 Notation natural_isomorphisms := natural_isomorphisms.
 Notation NaturalIsomorphisms := NaturalIsomorphisms.
-Definition funs_equivMixin C D := (EquivMixin (@itn_sym C D) (@itn_trans C D) (@itn_refl C D)).
-Definition funs_equivType C D := Eval hnf in EquivType (Fun (C, D)) (funs_equivMixin C D).
-Definition obs_equivMixin C := (EquivMixin (@iti_sym C) (@iti_trans C) (@iti_refl C)).
+Definition funs_equivMixin C D := (EquivMixin (@pniso_sym C D) (@pniso_trans C D) (@pniso_refl C D)).
+Definition funs_equivType (C D : category) := Eval hnf in EquivType (Fun (C, D)) (funs_equivMixin C D).
+Definition obs_equivMixin C := (EquivMixin (@piso_sym C) (@piso_trans C) (@piso_refl C)).
 Definition obs_equivType C := Eval hnf in EquivType (Ob C) (obs_equivMixin C).
-Definition nats_equivMixin C D F G := (EquivMixin (@eqn_sym C D F G) (@eqn_trans C D F G) (@eqn_refl C D F G)).
+Definition nats_equivMixin C D F G := (EquivMixin (@fniso_sym C D F G) (@fniso_trans C D F G) (@fniso_refl C D F G)).
 Definition nats_equivType C D F G := Eval hnf in EquivType (Nat (F, G)) (@nats_equivMixin C D F G).
 End Exports.
 End Isomorphism.
 Export Isomorphism.Exports.
 
-Lemma compf0 C D (f : Fun (C, D)) :
+Lemma compf0 (C D : category) (f : Fun (C, D)) :
   @equiv_op (funs_equivType C D) f (f \compf (@idf C)).
 Proof.
   set L := @NatMixin _ _ f (f \compf idf _) (idn _) (idn_map_naturality _).
   set R := @NatMixin _ _ (f \compf idf _) f (idn _) (idn_map_naturality _).
-  do !apply: ex_intro.
+  apply: Pairing;
   apply (@NaturalIsomorphisms _ _ _ _ L R).
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Qed.
   
-Lemma comp0f C D (f : Fun (C, D)) :
+Lemma comp0f (C D : category) (f : Fun (C, D)) :
   @equiv_op (funs_equivType C D) f ((@idf D) \compf f).
 Proof.
   set L := @NatMixin _ _ f (idf _ \compf f) (idn _) (idn_map_naturality _).
   set R := @NatMixin _ _ (idf _ \compf f) f (idn _) (idn_map_naturality _).
-  do !apply: ex_intro.
+  apply: Pairing;
   apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: compm0.
 Qed.
 
-Lemma compn0 C D (f g : Fun (C, D)) (n : Nat (f, g)) :
+Lemma compn0 (C D : category) (f g : Fun (C, D)) (n : Nat (f, g)) :
   @equiv_op (nats_equivType f g) n (n \compn (idn f)).
 move=> X; by apply: compm0.
 Qed.
 
-Lemma comp0n C D (f g : Fun (C, D)) (n : Nat (f, g)) :
+Lemma comp0n (C D : category) (f g : Fun (C, D)) (n : Nat (f, g)) :
   @equiv_op (nats_equivType f g) n ((idn g) \compn n).
 move=> X; by apply: comp0m.
 Qed.
@@ -646,7 +670,7 @@ Structure limit I C F :=
     }.
 
 Notation "- L" := (canonical_solution L).
-Local Lemma add_loop I C (F : Fun (I, C)) (limL : limit F) (f : Mor (limL, limL)) :
+Local Lemma add_loop (I C : category)  (F : Fun (I, C)) (limL : limit F) (f : Mor (limL, limL)) :
   let sL := canonical_solution limL in
   (forall (A B : Ob I) (g : Mor (A, B)),
     ('F g) \compm (proj1_sig sL A \compm f) == (proj1_sig sL B \compm f)) ->
@@ -665,12 +689,12 @@ apply: Congruence.etrans; last apply: H1.
 by apply/symP.
 Defined.
   
-Lemma limit_is_the_unique I C (F : Fun (I, C)) :
+Lemma limit_is_the_unique (I C : category) (F : Fun (I, C)) :
   forall (limL : limit F) (limL' : limit F),
     @equiv_op (obs_equivType C) (limit_object limL) (limit_object limL').
 Proof.
 move => limL limL' /=.
-do !apply: ex_intro.
+apply: Pairing.
 set u := (@universal_morphism _ _ _ limL' _ (canonical_solution limL)).
 set u' := (@universal_morphism _ _ _ limL _ (canonical_solution limL')).
 apply (@Isomorphisms _ _ _ (proj1_sig u) (proj1_sig u')).

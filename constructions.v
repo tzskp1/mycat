@@ -13,7 +13,7 @@ Proof.
   move => /= C D E F h i j.
   set L := @NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (idn _) (idn_map_naturality _).
   set R := @NatMixin _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (idn _) (idn_map_naturality _).
-  do !apply: ex_intro;
+  apply: Pairing.
   apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
@@ -33,12 +33,12 @@ Defined.
 
 Lemma cats_comp_left : @Category.compatibility_left category _ compf funs_equivMixin.
 Proof.
-  move => ? ? ? f f' g /= [N] [M] [H].
+  move => ? ? ? f f' g [N M] [H].
   set L := @NatMixin _ _ (g \compf f) (g \compf f')
                                   (g \compfn N) (compfn_naturality _ _).
   set R := @NatMixin _ _ (g \compf f') (g \compf f)
                                   (g \compfn M) (compfn_naturality _ _).
-  do !apply: ex_intro.
+  apply: Pairing.
   apply (@NaturalIsomorphisms _ _ _ _ L R) => X.
   apply: Isomorphisms => /=;
   (apply: Congruence.etrans;
@@ -49,18 +49,16 @@ Defined.
 
 Lemma cats_comp_right : @Category.compatibility_right category _ compf funs_equivMixin.
 Proof.
-  move => ? ? ? f g g' /= [N] [M] [H].
+  move => ? ? ? f g g' [N M] [H].
   set L := @NatMixin _ _ (g \compf f) (g' \compf f)
                                   (N \compnf f) (compnf_naturality _ _).
   set R := @NatMixin _ _ (g' \compf f) (g \compf f)
                                   (M \compnf f) (compnf_naturality _ _).
-  do !apply: ex_intro.
+  apply: Pairing.
   apply (@NaturalIsomorphisms _ _ _ _ L R) => X;
-  apply: Isomorphisms => /=;
-  by case: (H (f X)).
+  apply: Isomorphisms; by case: (H (f X)).
 Defined.
-
-Notation cats_catMixin := (CatMixin cats_associativity cats_compm0 cats_comp0m cats_comp_left cats_comp_right).
+Canonical cats_catMixin := CatMixin cats_associativity cats_compm0 cats_comp0m cats_comp_left cats_comp_right.
 Canonical cats_catType := Eval hnf in CatType category cats_catMixin.
 End Cats.
 Notation cats := cats_catType.
@@ -202,51 +200,17 @@ Proof. by move=> [m i] [m' i'] [f [g p]] [f' [g' p']]. Defined.
 Lemma triv_id_id : Functor.maps_identity_to_identity triv_incl_mor.
 Proof. by move=> [m i]. Defined.
 
-Definition trivial_inclusion : Fun(tcatn n, tcat_catType') := FunMixin triv_id_id triv_pres_comp triv_pres_equiv.
+Definition trivial_inclusion_Mixin := FunMixin triv_id_id triv_pres_comp triv_pres_equiv.
+Definition trivial_inclusion := FunType _ _ trivial_inclusion_Mixin.
 End TrivialEmmbedding.
 
 Local Notation "f == g" := (equiv_op f g).
-Canonical funs_equivType.
-Canonical nats_equivType.
+Canonical obs_equivMixin.
 Canonical obs_equivType.
-
-(* Lemma fun_prfK C D mo mo' mm mm' *)
-(*       (i : Functor.maps_identity_to_identity mm) *)
-(*       (pc : Functor.preserve_composition mm) *)
-(*       (pe : @Functor.preserve_equivalence _ _ mo mm) *)
-(*       (i' : Functor.maps_identity_to_identity mm') *)
-(*       (pc' : Functor.preserve_composition mm') *)
-      (* (pe' : @Functor.preserve_equivalence C D mo' mm') : *)
-      (* (n : forall a, Mor(mo a, mo' a)) *)
-      (* (m : forall a, Mor(mo' a, mo a)) *)
-      (* (na : forall A A' (f : Mor (A, A')), n _ \compm mm _ _ f == mm' _ _ f \compm n _) *)
-      (* (ma : forall A A' (f : Mor (A, A')), m _ \compm mm' _ _ f == mm _ _ f \compm m _) *)
-      (* (mni : forall a, n a \compm m a == id) *)
-      (* (nmi : forall a, m a \compm n a == id) : *)
-(*   (forall a, mo a = mo' a) ->  *)
-(*   FunMixin i pc pe == FunMixin i' pc' pe'. *)
-(* Proof. *)
-(*   destruct D. *)
-(*   destruct m. *)
-(*   move=> H. *)
-(*   rewrite equivE /=. *)
-(*   set F := FunMixin i pc pe. *)
-(*   set G := FunMixin i' pc' pe'. *)
-(* have: { spF: forall X, Mor (F X, G X) | @spF (Category.id _) == id }. *)
-(* by apply (@exist _ _ (fun x => *)
-(*                         match x with *)
-(*                         | pt => id *)
-(*                         end)); apply/reflP. *)
-(* Defined. *)
-(*   apply (@ex_intro _ _ (@NatMixin _ _ F G (fun X => Category.id X: Mor (mo X, mo' X)) _)). *)
-(*   rewrite H. *)
-(*   move=> ? ? ? /=. *)
-(*   Set Printing All. *)
-(*   apply: compm_comp. *)
-(*   apply: (@ex_intro _ _ (@NatMixin _ _ G F (fun X => _: Mor (G X, F X)) _)). *)
-(*   constructor => X; by constructor. *)
-(* Defined. *)
-(* Arguments fun_prfK {_ _ _ _ _ _ _ _ _ _ _ _} _ _ {_ _ _ _}. *)
+Canonical funs_equivMixin.
+Canonical funs_equivType.
+(* Canonical nats_equivMixin. *)
+(* Canonical nats_equivType. *)
 
 Section Pushout.
 Variables C D : category.
@@ -285,7 +249,7 @@ Proof.
   apply comp_right.
 Defined.
 
-Notation FC_catMixin := (CatMixin FC_associativity FC_compm0 FC_comp0m FC_comp_left FC_comp_right).
+Canonical FC_catMixin := CatMixin FC_associativity FC_compm0 FC_comp0m FC_comp_left FC_comp_right.
 Canonical FC_catType := Eval hnf in CatType FC FC_catMixin.
 End Pushout.
 Notation pushout := FC_catType.
@@ -326,8 +290,8 @@ Proof.
   apply H.
 Defined.
 End Funs.
-Notation funs_catMixin C D := (CatMixin (@funs_associativity C D) (@funs_compm0 C D) (@funs_comp0m C D) (@funs_comp_left C D) (@funs_comp_right C D)).
-Canonical funs_catType C D := Eval hnf in CatType Fun (C, D) (funs_catMixin C D).
+Canonical funs_catMixin (C D : category) := CatMixin (@funs_associativity C D) (@funs_compm0 C D) (@funs_comp0m C D) (@funs_comp_left C D) (@funs_comp_right C D).
+Canonical funs_catType (C D : category) := Eval hnf in CatType Fun (C, D) (funs_catMixin C D).
 Notation funs := funs_catType.
 Notation "'Fun' ( C , D )" := (funs C D).
 
@@ -367,7 +331,7 @@ Proof.
   by apply comp_left.
 Defined.
 
-Notation op_catMixin := (CatMixin op_associativity op_compm0 op_comp0m op_comp_left op_comp_right).
+Canonical op_catMixin := CatMixin op_associativity op_compm0 op_comp0m op_comp_left op_comp_right.
 Canonical op_catType := Eval hnf in CatType (Ob C) op_catMixin.
 End Opposite.
 Notation opposite_category := op_catType.
@@ -375,15 +339,37 @@ Notation "'Op' C" := (opposite_category C) (at level 1).
 
 Section Opposite.
 Variable C : Ob cats.
-Local Notation F := (@FunMixin (Op (Op C)) C ssrfun.id (fun x y f => f) _ _ _ : Mor(Op (Op C), C)).
-Local Notation G := (@FunMixin C (Op (Op C)) ssrfun.id (fun x y f => f) _ _ _ : Mor(C, Op (Op C))).
+(* Local Lemma Fm1 : @Functor.maps_identity_to_identity _ _ (fun x y : Op (Op C) => ssrfun.id). *)
+(*        Functor.preserve_composition (fun x y : Op (Op C) => ssrfun.id) -> *)
+(*        Functor.preserve_equivalence (fun x y : Op (Op C) => ssrfun.id) -> *)
+Local Definition Fm := (@FunMixin (Op (Op C)) C [CatMixin of C] _ ssrfun.id (fun x y f => f)).
+Local Definition F : Mor(Op (Op C), C).
+move: Fm => /= Fm'.
+Arguments op_catType /.
+Arguments op_catMixin /.
+Set Printing All.
+rewrite /=.
+apply (FunType _ _ (Fm' _ _ _)).
+rewrite /op_catType.
+rewrite /=.
+vm_compute.
+  apply: (@FunMixin (Op (Op C)) C _ _ _ ssrfun.id (fun x y f => f) _ _ _).
+Local Notation F := (@FunMixin (Op (Op C)) C _ _ _ ssrfun.id (fun x y f => f) _ _ _ : Mor(Op (Op C), C)).
+Local Notation G := (@FunMixin C (Op (Op C)) _ _ _ ssrfun.id (fun x y f => f) _ _ _ : Mor(C, Op (Op C))).
 Local Notation N := (@NatMixin _ _ (G \compf F) (idf Op (Op C)) (fun X : Ob (Op (Op C)) => id : Mor ((G \compf F) X, (idf Op (Op C)) X)) _).
 Local Notation M := (@NatMixin _ _ (idf Op (Op C)) (G \compf F) (fun X : Ob C => id : Mor ((idf Op (Op C)) X, (G \compf F) X)) _).
 Local Notation N' := (@NatMixin  _ _ (F \compf G) (idf C) (fun X : Ob C => id : Mor ((F \compf G) X, (idf C) X)) _).
 Local Notation M' := (@NatMixin _ _ (idf C) (F \compf G) (fun X : Ob (Op (Op C)) => id : Mor ((idf C) X, (F \compf G) X)) _).
 Lemma dualK : @equiv_op (obs_equivType cats) (Op (Op C)) C.
-do !apply: ex_intro.
-apply: (@Isomorphisms _ _ _ F G) => //.
+  Check (@FunMixin (Op (Op C)) C _ _ ssrfun.id (fun x y f => f) _ _ _).
+  Check (FunType _ _ (@FunMixin (Op (Op C)) C _ _ ssrfun.id (fun x y f => f) _ _ _)).
+  Check (FunType _ _ (@FunMixin (Op (Op C)) C _ _ ssrfun.id (fun x y f => f) _ _ _)).
+  Check ((FunType _ _ (@FunMixin (Op (Op C)) C _ _ ssrfun.id (fun x y f => f) _ _ _)) : Mor(Op (Op C), C)).
+  Check F.
+  
+Local Notation F := 
+  apply: Pairing.
+apply (@Isomorphisms _ _ _ F G) => //.
 + by apply: idf_id_id.
 + by apply: idf_pres_comp.
 + by apply: idf_id_id.
@@ -529,7 +515,7 @@ Proof. move=> [??] [??] [??] [??] [??] [??] [??]; split; by apply: comp_left. De
 
 Lemma prod_comp_right : @Category.compatibility_right _ prod_mor prod_comp prod_cat_equivMixin.
 Proof. move=> [??] [??] [??] [??] [??] [??] [??]; split; by apply: comp_right. Defined.
-Notation prod_catMixin := (CatMixin prod_associativity prod_compm0 prod_comp0m prod_comp_left prod_comp_right).
+Canonical prod_catMixin := (CatMixin prod_associativity prod_compm0 prod_comp0m prod_comp_left prod_comp_right).
 Canonical prod_catType := Eval hnf in CatType (Ob C * Ob D) prod_catMixin.
 Definition pfst : Fun(prod_catType, C).
   apply: (@FunMixin prod_catType C fst (fun _ _ => fst)).
