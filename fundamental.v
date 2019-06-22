@@ -291,50 +291,42 @@ Local Notation "f == g" := (equiv_op f g).
 
 Module Functor.
 Section Axioms.
-Variables domain codomain : Type.
-Variable dom_cat : Category.mixin_of domain.
-Variable cod_cat : Category.mixin_of codomain.
-Variable map_of_objects : domain -> codomain.
+Variables domain codomain : category.
+Variable map_of_objects : Ob domain -> Ob codomain.
 Variable map_of_morphisms :
- forall A B, morphisms dom_cat A B ->
- morphisms cod_cat (map_of_objects A) (map_of_objects B).
+  forall A B, Mor(A, B) -> Mor(map_of_objects A, map_of_objects B).
 Definition maps_identity_to_identity :=
   forall A, @map_of_morphisms A A (Category.id A) == (Category.id (map_of_objects A)).
 Definition preserve_composition :=
-  forall A B C (f : morphisms dom_cat A B) (g : morphisms dom_cat B C),
+  forall A B C (f : Mor(A, B)) (g : Mor(B, C)),
   map_of_morphisms (g \compm f) == map_of_morphisms g \compm (map_of_morphisms f).
 Definition preserve_equivalence :=
-  forall A B (f f' : morphisms dom_cat A B),
+  forall A B (f f' : Mor(A, B)),
     f == f' -> map_of_morphisms f == map_of_morphisms f'.
 End Axioms.
 
-Structure mixin_of dom cod dm cm map_of_objects :=
+Structure mixin_of dom cod map_of_objects :=
   Mixin {
       map_of_morphisms;
-      id_id : @maps_identity_to_identity dom cod dm cm map_of_objects map_of_morphisms;
-      pres_comp : @preserve_composition dom cod dm cm map_of_objects map_of_morphisms;
-      pres_equiv : @preserve_equivalence dom cod dm cm map_of_objects map_of_morphisms;
+      id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
+      pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
+      pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
     }.
 Local Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Structure type dom cod (domc codc : category) :=
-  Pack {
-      map;
-      _: @class_of dom cod (Category.class domc) (Category.class codc) map;
-      (* _ : @equiv_op (obs_equivType domc) dom (Ob domc); *)
-      (* _ : @equiv_op (obs_equivType codc) cod (Ob codc); *)
-    }.
+Structure type (dom cod : category) :=
+  Pack { map; _: @class_of dom cod map; _: Type }.
 Variables (domT codT : category)
-          (cT : @type domT codT (Category.class domT) (Category.class codT))
+          (cT : @type domT codT)
           (mapT : Ob domT -> Ob codT).
-Definition class := let: Pack _ c _ := cT return @class_of _ _ _ _ (map cT) in c.
-Definition pack c := @Pack domT codT (Category.class domT) (Category.class codT) mapT c (Ob domT -> Ob codT).
-Definition clone (c : mixin_of _ _ mapT) (_ : phant_id (pack c) cT) := pack c.
+Definition class := let: Pack _ c _ := cT return @class_of _ _ (map cT) in c.
+Definition pack c := @Pack domT codT mapT c (Ob domT -> Ob codT).
+Definition clone (c : mixin_of mapT) (_ : phant_id (pack c) cT) := pack c.
 End ClassDef.
 
-Definition app_fun_mor (dom cod : category) (f : type (Category.class dom) (Category.class cod)) :=
-  @map_of_morphisms _ _ _ _ _ (class f).
+Definition app_fun_mor (dom cod : category) (f : type dom cod) :=
+  @map_of_morphisms _ _ _ (class f).
 Arguments app_fun_mor /.
 
 Module Exports.
@@ -346,7 +338,7 @@ Notation FunType C D m := (@pack C D _ m).
 Notation id_id := (id_id (class _)).
 Notation pres_comp := (pres_comp (class _)).
 Notation pres_equiv := (pres_equiv (class _)).
-Notation "'Fun' ( C , D )" := (@type C D [ CatMixin of C ] [ CatMixin of D ]).
+Notation "'Fun' ( C , D )" := (@type C D).
 Section Composition.
 Variables (C D E : category) (G : Fun (D, E)) (F : Fun (C, D)).
 Definition compfm A B (f : Mor(A, B)) : Mor((G \o F) A, (G \o F) B) := 'G ('F f).
@@ -459,12 +451,13 @@ Section Identity.
 Variables C D : category.
 Variable F : Fun (C, D).
 Definition idn_map X := @Category.id _ (Category.class D) (F X).
-Definition idn_map_naturality :=
-  (fun (A A' : Ob C) (f : Mor (A, A')) =>
-     Congruence.etrans ([eta iffRL symP] (comp0m (' F f))) (compm0 (' F f)))
-  : naturality_axiom idn_map.
+Lemma idn_map_naturality : naturality_axiom idn_map.
+move=> ? ? ? /=.
+apply: Congruence.etrans; last apply: compm0.
+by apply/symP; apply: comp0m.
+Defined.
 Definition idn :=
-  @NatMixin _ _ _ _ idn_map idn_map_naturality.
+  NatMixin idn_map_naturality.
 End Identity.
 Section Composition.
 Variables C D E : category.
@@ -535,7 +528,7 @@ Lemma piso_sym :
   Equivalence.symmetricity piso.
 Proof.
 move => ? ?.
-split; move=> [N M] [H1 H2];
+move=> [N M] [H1 H2];
 apply (@Pairing _ _ _ M N);
 by constructor.
 Defined.
@@ -572,10 +565,8 @@ Lemma pniso_sym :
   Equivalence.symmetricity pniso.
 Proof.
 move => ? ?.
-split; move=> [N M] [H];
-apply (Pairing M N);
-constructor => X;
-by constructor; case: (H X).
+move=> [N M] [H]; apply (Pairing M N); constructor => X.
+case: (H X) => H1 H2; by constructor.
 Defined.
 
 Lemma pniso_refl :
@@ -594,9 +585,9 @@ move => ? ? ?.
 move => [N1 M1] [H1] [N2 M2] [H2];
 apply: Pairing;
 apply (@NaturalIsomorphisms _ _ _ _ (N2 \compn N1) (M1 \compn M2)) => /= X;
-apply: Isomorphisms => /=;
 case: (H1 X) => /= [H11 ?];
 case: (H2 X) => /= [? H22];
+apply: Isomorphisms => /=;
 (apply: Congruence.etrans; first by apply: compmA);
 [ apply: Congruence.etrans; last by apply H11
 | apply: Congruence.etrans; last by apply H22 ];
@@ -616,8 +607,8 @@ Local Notation fniso :=
 Lemma fniso_sym :
   Equivalence.symmetricity fniso.
 Proof.
-  move => ? ?.
-  split => ? ?; by apply/symP.
+  move => ? ? ? ?.
+  by apply/symP.
 Defined.
 
 Lemma fniso_refl :
@@ -700,16 +691,24 @@ Section Axioms.
 Variables I C : category.
 Variable F : Fun (I, C).
 Notation solution_of_diagram L :=
-  (sig (fun (s : (forall A, Mor (L, F A))) =>
+  (sigT (fun (s : (forall A, Mor (L, F A))) =>
          forall A B (f : Mor (A, B)), ('F f) \compm (s A) == (s B))).
+Local Definition proj1_sigT A P (t : sigT P) :=
+  match t with
+  | existT x _ => x : A
+  end.
+Local Definition proj2_sigT A P (t : sigT P) :=
+  match t as e return P (@proj1_sigT A P e) with
+  | existT x y => y
+  end.
 Definition morphism_of_solutions L L'
       (sL : solution_of_diagram L) (sL' : solution_of_diagram L') :=
-    sig (fun l => forall A, (proj1_sig sL' A) == (proj1_sig sL A) \compm l).
+    sigT (fun l => forall A, (proj1_sigT sL' A) == (proj1_sigT sL A) \compm l).
 Definition universality_axiom L
       (sL : solution_of_diagram L)
       (u : (forall L' (sL' : solution_of_diagram L'), morphism_of_solutions sL sL')) :=
   (forall L' u' (sL' : solution_of_diagram L'),
-      (forall A, (proj1_sig sL' A) == (proj1_sig sL A) \compm u') -> proj1_sig (u L' sL') == u').
+      (forall A, (proj1_sigT sL' A) == (proj1_sigT sL A) \compm u') -> proj1_sigT (u L' sL') == u').
 End Axioms.
 Module Exports.
 Structure limit I C F :=
@@ -724,14 +723,14 @@ Notation "- L" := (canonical_solution L).
 Local Lemma add_loop (I C : category)  (F : Fun (I, C)) (limL : limit F) (f : Mor (limL, limL)) :
   let sL := canonical_solution limL in
   (forall (A B : Ob I) (g : Mor (A, B)),
-    ('F g) \compm (proj1_sig sL A \compm f) == (proj1_sig sL B \compm f)) ->
-    (forall A : Ob I, proj1_sig sL A == proj1_sig sL A \compm f) ->
+    ('F g) \compm (proj1_sigT sL A \compm f) == (proj1_sigT sL B \compm f)) ->
+    (forall A : Ob I, proj1_sigT sL A == proj1_sigT sL A \compm f) ->
   f == id.
 Proof.
 case: limL f => L sL uL pL f /= H H'.
-have: proj1_sig (uL L sL) == f.
+have: proj1_sigT (uL L sL) == f.
 apply pL, H'.
-have: proj1_sig (uL L sL) == id.
+have: proj1_sigT (uL L sL) == id.
 apply pL.
 move => A.
 apply compm0.
@@ -748,19 +747,19 @@ move => limL limL' /=.
 apply: Pairing.
 set u := (@universal_morphism _ _ _ limL' _ (canonical_solution limL)).
 set u' := (@universal_morphism _ _ _ limL _ (canonical_solution limL')).
-apply (@Isomorphisms _ _ _ (proj1_sig u) (proj1_sig u')).
+apply (@Isomorphisms _ _ _ (proj1_sigT u) (proj1_sigT u')).
   apply (@add_loop I C F limL).
   move => A B g /=.
   apply/symP.
   apply: Congruence.etrans; last apply compmA.
   apply subst_left.
   apply/symP.
-  apply (proj2_sig (canonical_solution limL)).
+  apply (proj2_sigT (canonical_solution limL)).
  move => A.
  apply: Congruence.etrans; last apply compmA.
- apply: Congruence.etrans; first apply (proj2_sig u A).
+ apply: Congruence.etrans; first apply (proj2_sigT u A).
  apply subst_left.
- apply: Congruence.etrans; first apply (proj2_sig u' A).
+ apply: Congruence.etrans; first apply (proj2_sigT u' A).
  apply/reflP.
 apply (@add_loop I C F limL').
  move => A B g /=.
@@ -768,12 +767,12 @@ apply (@add_loop I C F limL').
  apply: Congruence.etrans; last apply compmA.
  apply subst_left.
  apply/symP.
- apply (proj2_sig (canonical_solution limL')).
+ apply (proj2_sigT (canonical_solution limL')).
 move => A.
 apply: Congruence.etrans; last apply compmA.
-apply: Congruence.etrans; first apply (proj2_sig u' A).
+apply: Congruence.etrans; first apply (proj2_sigT u' A).
 apply subst_left.
-apply: Congruence.etrans; first apply (proj2_sig u A).
+apply: Congruence.etrans; first apply (proj2_sigT u A).
 apply/reflP.
 Defined.
 End Exports.
