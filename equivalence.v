@@ -9,8 +9,8 @@ Set Polymorphic Inductive Cumulativity.
 Module Equivalence.
 
 Section Axioms.
-Variables (T : Type) (op : T -> T -> Prop).
-Definition symmetricity := forall f g, op f g <-> op g f.
+Variables (T : Type) (op : T -> T -> Type).
+Definition symmetricity := forall f g, op f g -> op g f.
 Definition transitivity := forall f g h, op f g -> op g h -> op f h.
 Definition reflexivity := forall f, op f f.
 End Axioms.
@@ -79,7 +79,7 @@ Prenex Implicits equiv_op symP transP reflP.
 Section EqType.
 Variable T : eqType.
 Lemma eq_symP : @Equivalence.symmetricity T eq_op.
-Proof. split; by rewrite eq_sym. Qed.
+Proof. move=> ? ? ?; by rewrite eq_sym. Qed.
 Lemma eq_transP : @Equivalence.transitivity T eq_op.
 Proof. by move=> ? ? ? /eqP -> /eqP ->. Qed.
 Lemma eq_reflP : @Equivalence.reflexivity T eq_op.
@@ -90,7 +90,7 @@ End EqType.
 
 Section Prop'.
 Lemma prop_symP : @Equivalence.symmetricity Prop iff.
-Proof. move => ??; split; by move => ->. Qed.
+Proof. move => ??; by move => ->. Qed.
 Lemma prop_transP : @Equivalence.transitivity Prop iff.
 Proof. move=> ? ? ? [] ? ? [] ? ?. split; by auto. Qed.
 Lemma prop_reflP : @Equivalence.reflexivity Prop iff.
@@ -106,7 +106,7 @@ Local Notation "f == g" := (@equiv_op (EquivType _ equiv) f g).
 Definition map_op (f : d -> v) (g : d -> v) :=
   forall z, f z == g z.
 Lemma map_symP : Equivalence.symmetricity map_op.
-Proof. move=> f g; split => /= H z; apply/symP; by apply: H. Qed.
+Proof. move=> f g /= H z. apply/symP; by apply: H. Qed.
 Lemma map_transP : Equivalence.transitivity map_op.
 Proof.
 move=> ? ? ? H1 H2 z.
@@ -123,7 +123,7 @@ Section eq.
 Variable T : Type.
 Definition eqe_op := @eq T.
 Lemma eqe_symP : Equivalence.symmetricity eqe_op.
-Proof. move=> f g; split => H; by apply: esym. Qed.
+Proof. move=> f g H; by apply: esym. Qed.
 Lemma eqe_transP : Equivalence.transitivity eqe_op.
 Proof. move=> ? ? ? H1 H2. by apply: etrans; first apply H1. Qed.
 Lemma eqe_reflP : Equivalence.reflexivity eqe_op.
@@ -138,7 +138,7 @@ Variable equiv : Equivalence.mixin_of v.
 Variable map : d -> v.
 Definition pull_op (f : d) (g : d) := @equiv_op (EquivType _ equiv) (map f) (map g).
 Lemma pull_symP : Equivalence.symmetricity pull_op.
-Proof. move=> f g; split => /= H; apply/symP; by apply: H. Qed.
+Proof. move=> f g /= H; apply/symP; by apply: H. Qed.
 Lemma pull_transP : Equivalence.transitivity pull_op.
 Proof.
 move=> ? ? ? H1 H2.
@@ -156,17 +156,18 @@ Variables f s : Type.
 Variable fe : Equivalence.mixin_of f.
 Variable se : Equivalence.mixin_of s.
 Definition prod_op (p : f * s) (q : f * s) :=
-  @equiv_op (EquivType _ fe) (fst p) (fst q) /\ @equiv_op (EquivType _ se) (snd p) (snd q).
+  prod (@equiv_op (EquivType _ fe) (fst p) (fst q)) (@equiv_op (EquivType _ se) (snd p) (snd q)).
 Lemma prod_symP : Equivalence.symmetricity prod_op.
-Proof. by move=> [f1 f2] [g1 g2]; split; case => /= H1 H2; split; apply/symP. Qed.
+Proof. move=> [f1 f2] [g1 g2] [] /= H1 H2; by constructor; apply/symP. Qed.
+
 Lemma prod_transP : Equivalence.transitivity prod_op.
 Proof.
-move=> [??] [??] [??] [H11 H12] [H21 H22]; split.
+move=> [??] [??] [??] [H11 H12] [H21 H22]; constructor.
 by apply/transP; first by apply: H11.
 by apply/transP; first by apply: H12.
 Qed.
 Lemma prod_reflP : Equivalence.reflexivity prod_op.
-Proof. move=> [] p q; split; apply/reflP. Qed.
+Proof. move=> [] p q; constructor; apply/reflP. Qed.
 Definition prod_equivMixin := EquivMixin prod_symP prod_transP prod_reflP.
 Definition prod_equivType := Eval hnf in EquivType (f * s) prod_equivMixin.
 End Prod.

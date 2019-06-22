@@ -7,6 +7,17 @@ Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 
+Inductive pairing S T (P : S -> T -> Type) : Type :=
+  Pairing : forall f g, P f g -> pairing P.
+Arguments pairing {_ _} _.
+Arguments Pairing {_ _ _} _ _.
+Notation "p '.1'" := match p with
+                     | Pairing f _ _ => f
+                     end.
+Notation "p '.2'" := match p with
+                     | Pairing _ f _ => f
+                     end.
+
 Module Category.
 Section Axioms.
 Variable objects : Type.
@@ -86,79 +97,8 @@ End Notations.
 
 Module TotalEquiv.
 Import Notations.
-Structure total (C : category) :=
-  TotalEquiv
-    { total_dom : Ob C;
-      total_cod : Ob C;
-      total_mor : Mor (total_dom, total_cod) }.
-Local Notation td := total_dom.
-Local Notation tc := total_cod.
-Local Notation tm := total_mor.
-Coercion TotalEquiv : morphisms >-> total.
-Local Notation "f == g" := (@equiv_op (EquivType _ (equiv _ _ _)) f g).
-
-Definition total_op C (f g : total C) :=
-  let fA := td f in
-  let fB := tc f in
-  let fm := tm f in
-  let gA := td g in
-  let gB := tc g in
-  let gm := tm g in
-  exists (fgA : fA = gA) (fgB : gB = fB),
-    match fgA in (_ = y) return Mor (y, fB) with
-    | erefl => fm
-    end ==
-    match fgB in (_ = y) return Mor (gA, y) with
-    | erefl => gm
-    end.
-Local Arguments total_op C f g /.
-
-Lemma total_reflP C : Equivalence.reflexivity (@total_op C).
-Proof.
-  move=> [fA fB f] /=.
-  apply: (ex_intro _ (erefl fA)).
-  apply: (ex_intro _ (erefl fB)).
-  apply: reflP.
-Qed.
-Lemma total_symP C : Equivalence.symmetricity (@total_op C).
-Proof.
-  move=> [fA fB f] [gA gB g]; split;
-  move=> [] /= fgA [] fgB H;
-  apply: (ex_intro _ (esym fgA));
-  apply: (ex_intro _ (esym fgB));
-  move: H; destruct fgA, fgB => /= H;
-  by apply/symP.
-Qed.
-Lemma total_transP C : Equivalence.transitivity (@total_op C).
-Proof.
-  move=> [fA fB f] [gA gB g] [hA hB h] /= [] fgA [] fgB H1 [] ghA [] ghB H2.
-  apply: (ex_intro _ (eq_trans fgA ghA)).
-  apply: (ex_intro _ (esym (eq_trans (esym fgB) (esym ghB)))).
-  destruct fgA, ghA, fgB, ghB => /=.
-  by apply/transP; first apply: H1.
-Qed.
-Definition total_equivMixin C := EquivMixin (@total_symP C) (@total_transP C) (@total_reflP C).
-Canonical total_equivType C := Eval hnf in EquivType (total C) (total_equivMixin C).
-Local Notation "f ~ g" := (@equiv_op (total_equivType _) (TotalEquiv f) (TotalEquiv g)) (at level 30).
-
-Lemma suff_partial C (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) : f == g -> f ~ g.
-Proof.
-rewrite !equivE /= => H.
-apply: (ex_intro _ erefl).
-by apply: (ex_intro _ erefl).
-Qed.
-End TotalEquiv.
-
-Module Exports.
-Include Notations.
-Include TotalEquiv.
 Canonical partial_equivType T (C : mixin_of T) (A B : T) :=
   Eval hnf in EquivType _ (Category.equiv C A B).
-End Exports.
-End Category.
-Export Category.Exports.
-Local Notation "f == g" := (equiv_op f g).
-
 Lemma compm_comp c (A B C : Ob c) : @Congruence.compatible
                                       (EquivType (Mor (_, _)) (Category.equiv _ B C))
                                       (EquivType (Mor (_, _)) (Category.equiv _ A B))
@@ -172,31 +112,18 @@ Proof.
 Defined.
 Notation subst_left := (Congruence.subst_left (@compm_comp _ _ _ _)).
 Notation subst_right := (Congruence.subst_right (@compm_comp _ _ _ _)).
-
-Lemma identity_morphism_is_the_unique C (A : Ob C) (id' : Mor (A, A)) :
+Lemma identity_morphism_is_the_unique (C : category) (A : Ob C) (id' : Mor (A, A)) :
   (forall B (f : Mor (A, B)), (f \compm id') == f) -> id' == Category.id A.
 Proof.
 move => H.
 apply: Congruence.etrans; last by apply H.
 apply comp0m.
 Qed.
-
 Section Isomorphism.
-Inductive isomorphisms C (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Prop :=
+Inductive isomorphisms (C : category) (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Type :=
   Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
-
-Inductive pairing S T (P : S -> T -> Prop) : Type :=
-  Pairing : forall f g, P f g -> pairing P.
-
-Coercion p2p S T P (p : @pairing S T P) :=
-  match p with
-  | Pairing f _ _ => f
-  end.
-
 Arguments isomorphisms {_ _ _} _ _.
 Arguments Isomorphisms {_ _ _} _ _ _ _.
-Arguments pairing {_ _} _.
-Arguments Pairing {_ _ _} _ _.
 
 Section LocalArg.
 Variable C : category.
@@ -205,8 +132,7 @@ Local Notation piso :=
 Lemma piso_sym :
   Equivalence.symmetricity piso.
 Proof.
-move => ? ?.
-split; move=> [N M] [H1 H2];
+move=> ? ? [N M] [H1 H2];
 apply (@Pairing _ _ _ M N);
 by constructor.
 Defined.
@@ -237,6 +163,131 @@ End LocalArg.
 End Isomorphism.
 Definition obs_equivMixin C := (EquivMixin (@piso_sym C) (@piso_trans C) (@piso_refl C)).
 Definition obs_equivType C := Eval hnf in EquivType (Ob C) (obs_equivMixin C).
+
+Structure total (C : category) :=
+  TotalEquiv
+    { total_dom : Ob C;
+      total_cod : Ob C;
+      total_mor : Mor (total_dom, total_cod)
+    }.
+Local Notation td := total_dom.
+Local Notation tc := total_cod.
+Local Notation tm := total_mor.
+Coercion TotalEquiv : morphisms >-> total.
+Definition total_op C (f g : total C) :=
+  @pairing (pairing (@isomorphisms C (td f) (td g))) (pairing (@isomorphisms C (tc f) (tc g)))
+           (fun p1 p2 => p2.1 \compm tm f == tm g \compm p1.1).
+Local Arguments total_op C f g /.
+
+Lemma total_reflP C : Equivalence.reflexivity (@total_op C).
+Proof.
+  move=> [fA fB f].
+  apply (Pairing (@Pairing _ _ (fun x y => isomorphisms x y) id id (Isomorphisms (symP (compm0 _)) (symP (compm0 _))))
+                 (@Pairing _ _ (fun x y => isomorphisms x y) id id (Isomorphisms (symP (compm0 _)) (symP (compm0 _))))).
+  apply: Congruence.etrans; first (apply/symP; apply: comp0m).
+   by apply: compm0.
+Qed.
+
+Lemma total_symP C : Equivalence.symmetricity (@total_op C).
+Proof.
+  move=> [fA fB f] [gA gB g] /= [H1 H2] H3.
+  move: H1 H2 H3 => 
+  [p11 p12 [p11H p12H]] [p21 p22 [p21H p22H]] H3.
+  apply (Pairing (Pairing p12 p11 (Isomorphisms p12H p11H)) (Pairing p22 p21 (Isomorphisms p22H p21H))).
+  apply: Congruence.etrans.
+  apply: subst_right.
+  apply: compm0.
+  apply: Congruence.etrans.
+  apply/symP; apply: compmA.
+  apply: Congruence.etrans.
+  apply: subst_right.
+  apply/symP; apply: p12H.
+  apply: Congruence.etrans.
+  apply/symP; apply: compmA.
+  apply: subst_left.
+  apply: Congruence.etrans.
+  apply: compmA.
+  apply: Congruence.etrans.
+  apply: subst_right.
+  apply/symP; apply: H3.
+  apply: Congruence.etrans.
+  apply/symP; apply: compmA.
+  apply: Congruence.etrans.
+  apply: subst_left.
+  apply: p21H.
+  apply/symP; apply: comp0m.
+Qed.
+Lemma total_transP C : Equivalence.transitivity (@total_op C).
+Proof.
+  move=> [fA fB f] [gA gB g] [hA hB h] /= [p11 p12 p1H] [p21 p22 p2H].
+  move: p11 p1H => [p111 p112 [p111H p112H]].
+  move: p12 => [p121 p122 [p121H p122H]].
+  move: p22 p2H => [p221 p222 [p221H p222H]].
+  move: p21 => [p211 p212 [p211H p212H]].
+  move=> /= p1H p2H.
+  apply: (Pairing
+           (Pairing (p211 \compm p111) (p112 \compm p212) _)
+           (Pairing (p221 \compm p121) (p122 \compm p222) _)).
+  constructor.
+   apply: Congruence.etrans; first apply: compmA.
+   apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: compmA).
+   apply: Congruence.etrans; first (apply: subst_right; apply: subst_left; apply: p211H).
+   apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: comp0m).
+   apply p111H.
+  apply: Congruence.etrans; first apply: compmA.
+  apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: compmA).
+  apply: Congruence.etrans; first (apply: subst_right; apply: subst_left; apply: p112H).
+  apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: comp0m).
+  apply p212H.
+  constructor.
+   apply: Congruence.etrans; first apply: compmA.
+   apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: compmA).
+   apply: Congruence.etrans; first (apply: subst_right; apply: subst_left; apply: p221H).
+   apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: comp0m).
+   apply p121H.
+  apply: Congruence.etrans; first apply: compmA.
+  apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: compmA).
+  apply: Congruence.etrans; first (apply: subst_right; apply: subst_left; apply: p122H).
+  apply: Congruence.etrans; first (apply: subst_right; apply/symP; apply: comp0m).
+  apply p222H.
+  apply: Congruence.etrans; first apply: compmA.
+  apply: Congruence.etrans; first (apply: subst_right; apply: p2H).
+  apply: Congruence.etrans; first (apply/symP; apply: compmA).
+  apply: Congruence.etrans; first (apply: subst_left; apply: p1H).
+  apply: Congruence.etrans; first apply: compmA.
+  apply/reflP.
+Qed.
+Definition total_equivMixin C := EquivMixin (@total_symP C) (@total_transP C) (@total_reflP C).
+Canonical total_equivType C := Eval hnf in EquivType (total C) (total_equivMixin C).
+Local Notation "f ~ g" := (@equiv_op (total_equivType _) (TotalEquiv f) (TotalEquiv g)) (at level 30).
+
+Lemma suff_partial C (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) : f == g -> f ~ g.
+Proof.
+move=> H.
+apply (Pairing (@Pairing _ _ (fun x y => isomorphisms x y) id id (Isomorphisms (symP (compm0 _)) (symP (compm0 _))))
+               (@Pairing _ _ (fun x y => isomorphisms x y) id id (Isomorphisms (symP (compm0 _)) (symP (compm0 _))))).
+apply: Congruence.etrans; first (apply/symP; apply: comp0m).
+by apply: Congruence.etrans; last apply: compm0.
+Qed.
+
+(* Lemma necs_partial C (A B : Ob C) (f : Mor (A, B)) (g : Mor (A, B)) : f ~ g -> f == g. *)
+(* Proof. *)
+(* move=> [[p11 p12 [p11H p12H]] [p21 p22 [p21H p22H]] H]. *)
+(* apply: Congruence.etrans; first apply: comp0m. *)
+(* apply: Congruence.etrans; first (apply: subst_left; apply/symP; apply: p21H). *)
+(* apply: Congruence.etrans; first apply: compmA. *)
+(* apply: Congruence.etrans; first (apply: subst_right; apply: H). *)
+(* rewrite /=. *)
+(* Qed. *)
+End TotalEquiv.
+
+Module Exports.
+Include Notations.
+Include TotalEquiv.
+End Exports.
+End Category.
+Export Category.Exports.
+Local Notation "f == g" := (equiv_op f g).
 
 Module Functor.
 Section Axioms.
