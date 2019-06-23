@@ -620,49 +620,28 @@ Variables C D : category.
 Variables F G : Fun (C, D).
 Local Notation fniso :=
   (fun (N : Nat (F, G)) (M : Nat (F, G))
-   =>  forall X, N X == M X).
-Lemma fniso_sym :
-  Equivalence.symmetricity fniso.
-Proof.
-  move => ? ? ? ?.
-  by apply/symP.
-Defined.
+   => forall X, N X == M X).
+Lemma fniso_sym : Equivalence.symmetricity fniso.
+Proof. move => ? ? ? ?. by apply/symP. Defined.
 
-Lemma fniso_refl :
-  Equivalence.reflexivity fniso.
-Proof.
-  move => ? ?.
-  by apply/reflP.
-Defined.
+Lemma fniso_refl : Equivalence.reflexivity fniso.
+Proof. move => ? ?. by apply/reflP. Defined.
 
-Lemma fniso_trans :
-  Equivalence.transitivity fniso.
-Proof.
-  move => ? ? ? H ? ?.
-  by (apply/transP; first by apply: H).
-Defined.
+Lemma fniso_trans : Equivalence.transitivity fniso.
+Proof. move => ? ? ? H ? ?. by (apply/transP; first by apply: H). Defined.
 End Isomorphism.
 Definition nats_equivMixin C D F G := Eval hnf in (EquivMixin (@fniso_sym C D F G) (@fniso_trans C D F G) (@fniso_refl C D F G)).
 Definition nats_equivType C D F G := Eval hnf in EquivType (Nat (F, G)) (@nats_equivMixin C D F G).
 
 Variable C D : category.
 Lemma funs_associativity : @Category.associativity_of_morphisms _ _ (@compn C D) (@nats_equivMixin C D).
-Proof.
-  move => C' D' E F h i j X /=.
-  apply compmA.
-Defined.
+Proof. move => C' D' E F h i j X /=. apply compmA. Defined.
 
 Lemma funs_compm0 : @Category.identity_morphism_is_right_identity _ _ (@idn C D) (@compn C D) (@nats_equivMixin C D).
-Proof.
-  move => C' D' f X.
-  apply compm0.
-Defined.
+Proof. move => C' D' f X. apply compm0. Defined.
 
 Lemma funs_comp0m : @Category.identity_morphism_is_left_identity _ _ (@idn C D) (@compn C D) (@nats_equivMixin C D).
-Proof.
-  move => C' D' f X.
-  apply comp0m.
-Defined.
+Proof. move => C' D' f X. apply comp0m. Defined.
 
 Lemma funs_comp_left : @Category.compatibility_left _ _ (@compn C D) (@nats_equivMixin C D).
 Proof.
@@ -681,8 +660,8 @@ Proof.
   apply H.
 Defined.
 End Funs.
-Canonical funs_catMixin (C D : category) := CatMixin (@funs_associativity C D) (@funs_compm0 C D) (@funs_comp0m C D) (@funs_comp_left C D) (@funs_comp_right C D).
-Canonical funs (C D : category) := Eval hnf in CatType Fun (C, D) (funs_catMixin C D).
+Canonical funs_catMixin C D := CatMixin (@funs_associativity C D) (@funs_compm0 C D) (@funs_comp0m C D) (@funs_comp_left C D) (@funs_comp_right C D).
+Canonical funs C D := Eval hnf in CatType Fun (C, D) (funs_catMixin C D).
 Notation "'Fun' ( C , D )" := (funs C D).
 
 Section Cats.
@@ -701,16 +680,14 @@ Hint Constructors natural_isomorphisms.
 Variables C D : category.
 Local Notation pniso :=
   (fun F G => (pairing (@natural_isomorphisms C D F G))).
-Lemma pniso_sym :
-  Equivalence.symmetricity pniso.
+Lemma pniso_sym : Equivalence.symmetricity pniso.
 Proof.
 move => ? ?.
 move=> [N M] [H]; apply (Pairing M N); constructor => X.
 case: (H X) => H1 H2; by constructor.
 Defined.
 
-Lemma pniso_refl :
-  Equivalence.reflexivity pniso.
+Lemma pniso_refl : Equivalence.reflexivity pniso.
 Proof.
 move => X; apply: Pairing.
 apply (@NaturalIsomorphisms _ _ _ _ (idn X) (idn X)) => x.
