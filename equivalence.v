@@ -148,7 +148,7 @@ Qed.
 Lemma pull_reflP : Equivalence.reflexivity pull_op.
 Proof. move=> f; apply/reflP. Qed.
 Definition pull_equivMixin := EquivMixin pull_symP pull_transP pull_reflP.
-Canonical pull_equivType := Eval hnf in EquivType d pull_equivMixin.
+Definition pull_equivType := Eval hnf in EquivType d pull_equivMixin.
 End PullBack.
 
 Section Prod.
@@ -171,6 +171,17 @@ Proof. move=> [] p q; constructor; apply/reflP. Qed.
 Definition prod_equivMixin := EquivMixin prod_symP prod_transP prod_reflP.
 Definition prod_equivType := Eval hnf in EquivType (f * s) prod_equivMixin.
 End Prod.
+
+Section TrivialEquiv.
+Variable T : Type.
+Lemma trivial_symP : @Equivalence.symmetricity T (fun _ _ => true).
+Proof. by []. Qed.
+Lemma trivial_transP : @Equivalence.transitivity T (fun _ _ => true).
+Proof. by []. Qed.
+Lemma trivial_reflP : @Equivalence.reflexivity T (fun _ _ => true).
+Proof. by []. Qed.
+Definition trivial_equivMixin := EquivMixin trivial_symP trivial_transP trivial_reflP.
+End TrivialEquiv.
 
 Module Congruence.
 Lemma etrans (e : equivType) (x y z : e) : x == y -> y == z -> x == z.
