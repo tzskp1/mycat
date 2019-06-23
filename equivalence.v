@@ -9,32 +9,31 @@ Set Polymorphic Inductive Cumulativity.
 Module Equivalence.
 
 Section Axioms.
-Variables (T : Type) (op : T -> T -> Type).
+Universes u. 
+Variables (T : Type@{u}) (op : T -> T -> Type@{u}).
 Definition symmetricity := forall f g, op f g -> op g f.
 Definition transitivity := forall f g h, op f g -> op g h -> op f h.
 Definition reflexivity := forall f, op f f.
 End Axioms.
 
-Structure mixin_of T :=
-  Mixin { op : _;
-          sym : @symmetricity T op;
-          trans : @transitivity T op;
-          refl : @reflexivity T op;
-        }.
+Structure mixin_of@{u} T :=
+  Mixin {
+      op : _;
+      sym : @symmetricity@{u} T op;
+      trans : @transitivity@{u} T op;
+      refl : @reflexivity@{u} T op;
+    }.
 
 Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-
-Structure type := Pack {sort; _ : class_of sort; _ : Type}.
+Structure type@{u} := Pack { sort; _ : class_of@{u} sort; _ : Type@{u} }.
+Universes u.
 Local Coercion sort : type >-> Sortclass.
-Variables (T : Type) (cT : type).
-
-Definition class := let: Pack _ c _ := cT return class_of cT in c.
-
+Variables (T : Type@{u}) (cT : type@{u}).
+Definition class := let: Pack _ c _ := cT return class_of@{u} cT in c.
 Definition pack c := @Pack T c T.
 Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c.
-
 End ClassDef.
 
 Module Exports.
@@ -53,7 +52,7 @@ End Exports.
 End Equivalence.
 Export Equivalence.Exports.
 
-Definition equiv_op {T} := Equivalence.op (Equivalence.class T).
+Definition equiv_op@{u} {T} := Equivalence.op@{u} (Equivalence.class@{u} T).
 
 Local Notation "f == g" := (equiv_op f g).
 

@@ -7,6 +7,13 @@ Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 
+Definition smush C D (A : Ob D) :=
+  FunType C D (@FunMixin C D (fun _ : Ob C => A)
+                         (fun _ _ _ => id)
+                         (fun _ : Ob C => reflP)
+                         (fun _ _ _ _ _ => comp0m id)
+                         (fun _ _ _ _ _ => reflP)).
+
 Section Point.
 Inductive point_ob := pt : point_ob.
 
@@ -27,10 +34,11 @@ Proof. move => [] [] [] [] [] [] _; by apply/reflP. Defined.
 
 Lemma point_comp_right : @Category.compatibility_right _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
 Proof. move => [] [] [] [] [] [] _; by apply/reflP. Defined.
-
-Canonical point_catMixin := Eval hnf in (CatMixin point_associativity point_compm0 point_comp0m point_comp_left point_comp_right).
-Canonical point_catType := Eval hnf in CatType _ point_catMixin.
 End Point.
+
+Canonical point_catMixin :=
+  Eval hnf in @CatMixin point_ob point_mor (fun _ => pt) point_comp _ point_associativity point_compm0 point_comp0m point_comp_left point_comp_right.
+Canonical point_catType := Eval hnf in CatType _ point_catMixin.
 Coercion pto_pt (_ : point_ob) := point_catType.
 
 Section Ordinal.
@@ -290,13 +298,6 @@ End Opposite.
 
 Notation "''Op' F" := (op_fun F) (at level 1).
 
-Definition smush C D (A : Ob D) :=
-  FunType C D (@FunMixin C D (fun _ : Ob C => A)
-                         (fun _ _ _ => id)
-                         (fun _ : Ob C => reflP)
-                         (fun _ _ _ _ _ => comp0m id)
-                         (fun _ _ _ _ _ => reflP)).
-
 Section CanonicalEmmbedding0.
 Variable C : category.
 Local Definition embedding0_ob (A : Ob cat0) :=
@@ -424,25 +425,66 @@ apply: Congruence.etrans.
 apply/symP; apply: compm0.
 apply: comp0m.
 Defined.
-Definition ptC : Fun(C, Fun(pt, C)).
-  refine (FunType _ _ (@FunMixin _ _ sp Fm _ _ _)).
-  move=> ? ? /=; by apply/reflP.
-  move=> ? ? ? ? ? ? /=; by apply/reflP.
-  by move=> ? ? ? ? ? /=.
+Definition ptC_id_id : Functor.maps_identity_to_identity Fm.
+move=> ? ? /=; by apply/reflP.
 Defined.
+Definition ptC_pres_comp : Functor.preserve_composition Fm.
+move=> ? ? ? ? ? ? /=; by apply/reflP.
+Defined.
+Definition ptC_pres_equiv : Functor.preserve_equivalence Fm.
+by move=> ? ? ? ? ? /=.
+Defined.
+Definition ptC_Mixin := FunMixin ptC_id_id ptC_pres_comp ptC_pres_equiv.
+Definition ptC := FunType _ _ ptC_Mixin.
+Lemma test : morph cats C (funs (pto_pt pt) C) -> Functor.type C (funs (pto_pt pt) C) .
+  Set Printing Universes.
+  Arguments morph /.
+  rewrite /=.
+  move=> H.
+  apply H.
+  
+   Check (ptC : morph cats C (funs (pto_pt pt) C)).
+          
+  Functor.type C (funs (pto_pt pt) C))
+  Check (morph cats C (funs (pto_pt pt) C) : Functor.type C (funs (pto_pt pt) C)).
+  apply erefl.
+  
+  rewrite /=.
+Show Universes.
+  Check (Fun(C, Fun(pt, C)) : cats).
+  Print cats.
+Set 
+  
+Universes u u'.
+Constraint u' < u.
+  vm_compute.
+  apply erefl.
+
+  apply ptC_Mixin.
+  
+Eval vm_compute in (morph cats C Fun(pt, C)).
+
+          
 
 Definition Cpt : Fun(Fun(pt, C), C).
+  apply: (FunType _ _ _).
+  apply: (@FunMixin _ _).
+  move=> ?.
+  apply: id_id.
+  apply: (FunType _ _ _).
+  apply (@FunMixin _ _ (fun (f: Fun(pt, C)) => f pt) (fun x y f => f pt) _ _ _).
+apply: (FunType _ _ 
 apply: (FunType _ _ (@FunMixin _ _ (fun (f: Fun(pt, C)) => f pt) (fun x y f => f pt) _ _ _))=>//.
 move=> x; by apply/reflP.
 move=> ?????; by apply/reflP.
 Defined.
 Section SpK.
-Variable F : Fun (pt, C).
-Definition spF x : Mor (sp (F pt) x, F x) :=
+Variable F : Fun(pt, C).
+Definition spF x : Mor(sp (F pt) x, F x) :=
   match x with
   | pt => id
   end.
-Definition Fsp x : Mor (F x, (smush pt (F pt)) x) :=
+Definition Fsp x : Mor(F x, (smush pt (F pt)) x) :=
   match x with
   | pt => id
   end.
@@ -477,7 +519,9 @@ End SpK.
 
 Local Notation N := (NatType _ _ (@NatMixin _ _ (Cpt \compf ptC) (idf C) (fun X => id) _)).
 Local Notation M := (NatType _ _ (@NatMixin _ _ (idf C) (Cpt \compf ptC) (fun X => id) _)).
-Lemma test : Mor (Fun (pt, C), C).
+End Point.
+Lemma test C : morph cats Fun (pt, C) C.
+  Set Printing All.
   rewrite /=.
   apply: (FunType _ _ _).
   refine (@FunMixin _ _ _ (fun x y (f : Nat(x, y)) => f pt) _ _ _ ).
