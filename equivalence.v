@@ -9,32 +9,45 @@ Set Polymorphic Inductive Cumulativity.
 Module Equivalence.
 
 Section Axioms.
-Universes u. 
-Variables (T : Type@{u}) (op : T -> T -> Type@{u}).
+Universe u.
+Variable T : Type@{u}.
+Variable op : T -> T -> Type@{u}.
 Definition symmetricity := forall f g, op f g -> op g f.
 Definition transitivity := forall f g h, op f g -> op g h -> op f h.
 Definition reflexivity := forall f, op f f.
 End Axioms.
 
-Structure mixin_of@{u} T :=
+Structure mixin_of T :=
   Mixin {
-      op : _;
-      sym : @symmetricity@{u} T op;
-      trans : @transitivity@{u} T op;
-      refl : @reflexivity@{u} T op;
+      op;
+      sym : @symmetricity T op;
+      trans : @transitivity T op;
+      refl : @reflexivity T op;
     }.
 
 Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Structure type@{u} := Pack { sort; _ : class_of@{u} sort; _ : Type@{u} }.
+Structure type@{u} := Pack { sort: Type@{u}; _ : class_of@{u} sort; _ : Type@{u} }.
 Universes u.
 Local Coercion sort : type >-> Sortclass.
 Variables (T : Type@{u}) (cT : type@{u}).
 Definition class := let: Pack _ c _ := cT return class_of@{u} cT in c.
-Definition pack c := @Pack T c T.
+Definition pack c := @Pack@{u} T c T.
 Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c.
 End ClassDef.
+
+Section Down.
+Universes t u.
+Constraint t < u.
+Definition down (s : Type@{t}) (e : mixin_of@{t} s) : mixin_of@{u} s.
+case: e => [op sy t r].
+by apply: (@Mixin s op).
+Defined.
+Lemma downK (s : Type@{t}) (e : mixin_of@{t} s) a b :
+  @op s (down e) a b = @op s e a b.
+Proof. case: e => //. Qed.
+End Down.
 
 Module Exports.
 Coercion sort : type >-> Sortclass.
@@ -52,7 +65,7 @@ End Exports.
 End Equivalence.
 Export Equivalence.Exports.
 
-Definition equiv_op@{u} {T} := Equivalence.op@{u} (Equivalence.class@{u} T).
+Definition equiv_op {T} := Equivalence.op (Equivalence.class T).
 
 Local Notation "f == g" := (equiv_op f g).
 

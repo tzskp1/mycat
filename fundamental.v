@@ -7,9 +7,11 @@ Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 
+Set Printing Universes.
+
 Local Notation "f == g" := (equiv_op f g).
 
-Inductive pairing@{i} (S T : Type@{i}) (P : S -> T -> Type@{i}) : Type@{i} :=
+Inductive pairing@{m p} (S T : Type@{m}) (P : S -> T -> Type@{p}) : Type@{p} :=
   Pairing : forall f g, P f g -> pairing P.
 Arguments pairing {_ _} _.
 Arguments Pairing {_ _ _} _ _.
@@ -24,18 +26,18 @@ Notation "f '#'" := (fun g => comp f g) (at level 3).
 
 Module Category.
 Section Axioms.
-Universe o m.
-Constraint o < m.
-Variable objects : Type@{o}.
-Variable morphisms : objects -> objects -> Type@{m}.
+Universe u.
+Variable objects : Type@{u}.
+Variable morphisms : objects -> objects -> Type@{u}.
 Variable id : forall A, morphisms A A.
-Variable comp : forall A B C, morphisms B C -> morphisms A B -> morphisms A C.
+Variable comp : forall A B C,
+    morphisms B C -> morphisms A B -> morphisms A C.
 Variable cat_equivMixin: forall A B, Equivalence.mixin_of (morphisms A B).
 Local Notation "f '\comp' g" := (comp f g) (at level 40).
-Local Notation "f == g" := (@equiv_op@{m} (EquivType@{m} _ (cat_equivMixin _ _)) f g).
+Local Notation "f == g" := (@equiv_op@{u} (EquivType@{u} _ (cat_equivMixin _ _)) f g).
 
 Definition associativity_of_morphisms :=
-  forall (D E F G : objects)
+  forall D E F G
          (h : morphisms D E)
          (i : morphisms E F)
          (j : morphisms F G),
@@ -52,25 +54,25 @@ Definition compatibility_right :=
   g == g' -> g \comp f == g' \comp f.
 End Axioms.
 
-Structure mixin_of@{o m} (objects : Type@{o}) :=
+Structure mixin_of@{u} (objects : Type@{u}) :=
   Mixin {
       morphisms; id; compm; equiv;
-      compmA: @associativity_of_morphisms@{o m} objects morphisms compm equiv;
-      compm0 : @identity_morphism_is_right_identity@{o m} objects morphisms id compm equiv;
-      comp0m : @identity_morphism_is_left_identity@{o m} objects morphisms id compm equiv;
-      comp_left : @compatibility_left@{o m} objects morphisms compm equiv;
-      comp_right : @compatibility_right@{o m} objects morphisms compm equiv;
+      compmA: @associativity_of_morphisms@{u} objects morphisms compm equiv;
+      compm0 : @identity_morphism_is_right_identity@{u} objects morphisms id compm equiv;
+      comp0m : @identity_morphism_is_left_identity@{u} objects morphisms id compm equiv;
+      comp_left : @compatibility_left@{u} objects morphisms compm equiv;
+      comp_right : @compatibility_right@{u} objects morphisms compm equiv;
     }.
 
 Local Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Structure type@{i j} := Pack {sort; _ : class_of@{i j} sort; _ : Type@{i}}.
-Universes u u'.
+Structure type@{u} := Pack {sort; _ : class_of@{u} sort; _ : Type@{u}}.
+Universe u.
 Local Coercion sort : type >-> Sortclass.
-Variables (T : Type@{u}) (cT : type@{u u'}).
-Definition class := let: Pack _ c _ := cT return class_of@{u u'} cT in c.
-Definition pack c := @Pack T c T.
+Variables (T : Type@{u}) (cT : type@{u}).
+Definition class := let: Pack _ c _ := cT return class_of@{u} cT in c.
+Definition pack c := @Pack@{u} T c T.
 Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c.
 End ClassDef.
 
@@ -96,11 +98,44 @@ Notation "f '\compm' g" := (compm f g) (at level 40).
 Notation "'Ob' C" := (sort C) (at level 1).
 Notation "[ 'CatMixin' 'of' T ]" := (class _ : mixin_of T)
   (at level 0, format "[ 'CatMixin'  'of'  T ]") : form_scope.
-Notation "[ 'category' 'of' T 'for' C ]" := (@clone T C _ idfun ssrfun.id)
+Notation "[ 'category' 'of' T 'for' C ]" := (@clone T C _ idfun (fun x => x))
   (at level 0, format "[ 'category'  'of'  T  'for'  C ]") : form_scope.
-Notation "[ 'category' 'of' T ]" := (@clone T _ _ ssrfun.id ssrfun.id)
+Notation "[ 'category' 'of' T ]" := (@clone T _ _ (fun x => x) (fun x => x))
   (at level 0, format "[ 'category'  'of'  T ]") : form_scope.
 End Notations.
+
+Module Down.
+Import Notations.
+Section Down.
+Universes t u.
+Constraint t < u.
+Definition down (C : category@{t}) : category@{u}.
+case: C => c m _.
+apply (@Category.Pack@{u} c) => //.
+case: m => mo mm cm ce ca ir il cl cr.
+set ce' := (fun a b => Equivalence.down@{t u} (ce a b)).
+apply (@Category.Mixin@{u} c mo mm cm ce').
++ move=> a b e f h i j.
+  move: (ca a b e f h i j).
+  by rewrite !equivE Equivalence.downK.
++ move=> a b f.
+  move: (ir a b f).
+  by rewrite !equivE Equivalence.downK.
++ move=> a b f.
+  move: (il a b f).
+  by rewrite !equivE Equivalence.downK.
++ move=> a b e f f' g.
+  move: (cl a b e f f' g).
+  rewrite !equivE Equivalence.downK => H H'.
+  move: (H H'); by rewrite Equivalence.downK.
++ move=> a b e f f' g.
+  move: (cr a b e f f' g).
+  rewrite !equivE Equivalence.downK => H H'.
+  move: (H H'); by rewrite Equivalence.downK.
+Defined.
+End Down.
+End Down.
+Include Down.
 
 Module Equivalence.
 Import Notations.
@@ -128,14 +163,13 @@ apply comp0m.
 Qed.
 
 Section Isomorphism.
-Inductive isomorphisms@{o m} (C : category@{o m}) (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Type@{m} :=
+Inductive isomorphisms@{u} (C : category@{u}) (A B: Ob C) (f : Mor (A, B)) (g : Mor (B, A)) : Type@{u} :=
   Isomorphisms : (g \compm f) == id -> (f \compm g) == id -> isomorphisms f g.
 Arguments isomorphisms {_ _ _} _ _.
 Arguments Isomorphisms {_ _ _} _ _ _ _.
-Hint Constructors isomorphisms.
 
-Universes o m.
-Variable C : category@{o m}.
+Universe u.
+Variable C : category@{u}.
 Local Notation piso :=
   (fun A B => pairing (@isomorphisms C A B)).
 Lemma piso_sym : Equivalence.symmetricity piso.
@@ -165,10 +199,9 @@ apply subst_right;
 (apply: Congruence.etrans; first (by apply: comp0m));
 apply subst_left; by apply/symP.
 Defined.
+Definition obs_equivMixin := EquivMixin@{u} piso_sym piso_trans piso_refl.
+Definition obs_equivType := Eval hnf in EquivType@{u} (Ob C) obs_equivMixin.
 End Isomorphism.
-
-Definition obs_equivMixin C := (EquivMixin (@piso_sym C) (@piso_trans C) (@piso_refl C)).
-Definition obs_equivType C := Eval hnf in EquivType (Ob C) (obs_equivMixin C).
 
 Structure total (C : category) :=
   TotalEquiv
@@ -290,15 +323,16 @@ End Equivalence.
 Module Exports.
 Include Notations.
 Include Equivalence.
+Coercion down : category >-> category.
 End Exports.
 End Category.
 Export Category.Exports.
 
 Module Functor.
 Section Axioms.
-Universes o o' m m'.
-Variable domain : category@{o m}.
-Variables codomain : category@{o' m'}.
+Universes u u'.
+Variable domain : category@{u}.
+Variables codomain : category@{u'}.
 Variable map_of_objects : Ob domain -> Ob codomain.
 Variable map_of_morphisms :
   forall A B, Mor(A, B) -> Mor(map_of_objects A, map_of_objects B).
@@ -312,24 +346,26 @@ Definition preserve_equivalence :=
     f == f' -> map_of_morphisms f == map_of_morphisms f'.
 End Axioms.
 
-Structure mixin_of@{o o' m m'} dom cod map_of_objects :=
+Structure mixin_of@{u u'}
+          (dom : category@{u})
+          (cod : category@{u'}) map_of_objects :=
   Mixin {
       map_of_morphisms;
-      id_id : @maps_identity_to_identity@{o o' m m'} dom cod map_of_objects map_of_morphisms;
-      pres_comp : @preserve_composition@{o o' m m'} dom cod map_of_objects map_of_morphisms;
-      pres_equiv : @preserve_equivalence@{o o' m m'} dom cod map_of_objects map_of_morphisms;
+      id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
+      pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
+      pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
     }.
 Local Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Structure type@{o o' m m'} dom cod :=
-  Pack { map; _: @class_of@{o o' m m'} dom cod map; _: Type@{o}; _: Type@{o'} }.
-Universes o o' m m'.
-Variables (domT : category@{o m})
-          (codT : category@{o' m'})
+Structure type@{u u'} dom cod :=
+  Pack { map; _: @class_of@{u u'} dom cod map; _: Type@{u}; _: Type@{u'} }.
+Universes u u'.
+Variables (domT : category@{u})
+          (codT : category@{u'})
           (cT : @type domT codT)
           (mapT : Ob domT -> Ob codT).
-Definition class := let: Pack _ c _ _ := cT return @class_of@{o o' m m'} _ _ (map cT) in c.
+Definition class := let: Pack _ c _ _ := cT return @class_of@{u u'} _ _ (map cT) in c.
 Definition pack c := @Pack domT codT mapT c (Ob domT) (Ob codT).
 Definition clone (c : mixin_of mapT) (_ : phant_id (pack c) cT) := pack c.
 End ClassDef.
@@ -387,7 +423,7 @@ Variable C : category.
 Definition idfm (A B : Ob C) (f : Mor (A, B)) := f.
 Definition idf_id_id := (fun _  => reflP) : maps_identity_to_identity idfm.
 Definition idf_pres_comp := (fun _ _ _ _ _ => reflP) : preserve_composition idfm.
-Definition idf_pres_equiv := (fun _ _ _ _ => ssrfun.id) : preserve_equivalence idfm.
+Definition idf_pres_equiv := (fun _ _ _ _ => (fun x => x)) : preserve_equivalence idfm.
 Definition idf_Mixin := FunMixin idf_id_id idf_pres_comp idf_pres_equiv.
 Definition idf := FunType _ _ idf_Mixin.
 End idf.
@@ -403,27 +439,27 @@ Export Functor.Exports.
 
 Module NaturalTransformation.
 Section Axioms.
-Universes o o' m m'.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Variables F G : (functor@{o o' m m'} C D).
+Universes u u'.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Variables F G : (functor@{u u'} C D).
 Variable map : forall X, Mor (F X, G X).
 Arguments map {X}.
 Definition naturality_axiom :=
   forall A A' (f : Mor (A, A')), map \compm 'F f == 'G f \compm map.
 End Axioms.
 
-Structure mixin_of@{o o' m m'} C D F G natural_map :=
-  Mixin { naturality : @naturality_axiom@{o o' m m'} C D F G natural_map }.
+Structure mixin_of@{u u'} (C : category@{u}) (D : category@{u'}) F G natural_map :=
+  Mixin { naturality : @naturality_axiom C D F G natural_map }.
 
 Local Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
-Universes o o' m m'.
-Variable dom : category@{o m}.
-Variable cod : category@{o' m'}.
-Structure type domf codf := Pack { map; _ : @class_of@{o o' m m'} dom cod domf codf map; _ : Type@{m'} }.
-Variables (domfT codfT : functor@{o o' m m'} dom cod) (cT : type domfT codfT)
+Universes u u'.
+Variable dom : category@{u}.
+Variable cod : category@{u'}.
+Structure type domf codf := Pack { map; _ : @class_of@{u u'} dom cod domf codf map; _ : Type@{u'} }.
+Variables (domfT codfT : functor@{u u'} dom cod) (cT : type domfT codfT)
           (mapT : forall X , Mor(domfT X, codfT X)).
 Definition class := let: Pack _ c _ := cT return @class_of dom cod domfT codfT (map cT) in c.
 Definition pack c := @Pack domfT codfT mapT c (forall X, Mor(domfT X, codfT X)).
@@ -446,29 +482,29 @@ End Notations.
 Module Identity.
 Import Notations.
 Section idn.
-Universes o o' m m'.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Variable F : functor@{o o' m m'} C D.
-Definition idn_map X := @Category.id@{o' m'} _ (Category.class D) (F X).
+Universes u u'.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Variable F : functor@{u u'} C D.
+Definition idn_map X := @Category.id@{u'} _ (Category.class D) (F X).
 Lemma idn_map_naturality : naturality_axiom idn_map.
 move=> ? ? ? /=.
 apply: Congruence.etrans; last apply: compm0.
 by apply/symP; apply: comp0m.
 Defined.
-Definition idn := NatType F F (NatMixin@{o o' m m'} idn_map_naturality).
+Definition idn := NatType F F (NatMixin@{u u'} idn_map_naturality).
 End idn.
 End Identity.
 
 Module Composition.
 Import Notations.
 Section compn.
-Universes o o' m m'.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Variables F G H : functor@{o o' m m'} C D.
-Variable M : natural_transformation@{o o' m m'} G H.
-Variable N : natural_transformation@{o o' m m'} F G.
+Universes u u'.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Variables F G H : functor@{u u'} C D.
+Variable M : natural_transformation@{u u'} G H.
+Variable N : natural_transformation@{u u'} F G.
 Definition compn_map X := M X \compm N X.
 Lemma compn_naturality : naturality_axiom compn_map.
 Proof.
@@ -491,13 +527,13 @@ Notation "N \compn M" := (compn N M)  (at level 40).
 
 Section compfn.
 Import Notations.
-Universes o o' o'' m m' m''.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Variable E : category@{o'' m''}.
-Variable F G : functor@{o o' m m'} C D.
-Variable H : functor@{o' o'' m' m''} D E.
-Variable N : natural_transformation@{o o' m m'} F G.
+Universes u u' u''.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Variable E : category@{u''}.
+Variable F G : functor@{u u'} C D.
+Variable H : functor@{u' u''} D E.
+Variable N : natural_transformation@{u u'} F G.
 Definition compfn_map X := 'H (N X).
 Lemma compfn_naturality : @naturality_axiom C E (H \compf F) (H \compf G) compfn_map.
 Proof.
@@ -516,13 +552,13 @@ End compfn.
 Notation "F \compfn N" := (compfn F N) (at level 40).
 
 Section compnf.
-Universes o o' o'' m m' m''.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Variable E : category@{o'' m''}.
-Variable F G : functor@{o' o'' m' m''} D E.
-Variable N : natural_transformation@{o o' m m'} F G.
-Variable H : functor@{o o' m m'} C D.
+Universes u u' u''.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Variable E : category@{u''}.
+Variable F G : functor@{u' u''} D E.
+Variable N : natural_transformation@{u' u''} F G.
+Variable H : functor@{u u'} C D.
 Definition compnf_map X := N (H X).
 Lemma compnf_naturality : @naturality_axiom C E (F \compf H) (G \compf H) compnf_map.
 Proof.
@@ -638,40 +674,42 @@ Export Limit.Exports.
 
 Section Funs.
 Section Isomorphism.
-Universes o o' m m' n.
-Constraint m <= n.
-Constraint m' <= n.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Variables F G : functor@{o o' m m'} C D.
+Universes u u' u''.
+Constraint u <= u''.
+Constraint u' <= u''.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Variables F G : functor@{u u'} C D.
 Local Notation fniso :=
-  (fun (N M : natural_transformation@{o o' m m'} F G)
+  (fun (N M : natural_transformation@{u u'} F G)
    => forall X, N X == M X).
-Lemma fniso_sym : Equivalence.symmetricity@{n} fniso.
+Lemma fniso_sym : Equivalence.symmetricity@{u''} fniso.
 Proof. move => ? ? ? ?. by apply/symP. Defined.
 
-Lemma fniso_refl : Equivalence.reflexivity@{n} fniso.
+Lemma fniso_refl : Equivalence.reflexivity@{u''} fniso.
 Proof. move => ? ?. by apply/reflP. Defined.
 
-Lemma fniso_trans : Equivalence.transitivity@{n} fniso.
+Lemma fniso_trans : Equivalence.transitivity@{u''} fniso.
 Proof. move => ? ? ? H ? ?. by (apply/transP; first by apply: H). Defined.
-Definition nats_equivMixin := Eval hnf in EquivMixin fniso_sym fniso_trans fniso_refl.
-Definition nats_equivType := Eval hnf in EquivType (natural_transformation@{o o' m m'} F G) nats_equivMixin.
+Definition nats_equivMixin := Eval hnf in EquivMixin@{u''} fniso_sym fniso_trans fniso_refl.
+Definition nats_equivType := Eval hnf in EquivType@{u''} (natural_transformation@{u u'} F G) nats_equivMixin.
 End Isomorphism.
 
-Universes o o' m m'.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
-Lemma funs_associativity : @Category.associativity_of_morphisms _ _ (@compn C D) (@nats_equivMixin C D).
+Universes u u' u''.
+Constraint u <= u''.
+Constraint u' <= u''.
+Variable C : category@{u}.
+Variable D : category@{u'}.
+Lemma funs_associativity : @Category.associativity_of_morphisms@{u''} _ _ (@compn C D) (@nats_equivMixin@{u u' u''} C D).
 Proof. move => C' D' E F h i j X /=. apply compmA. Defined.
 
-Lemma funs_compm0 : @Category.identity_morphism_is_right_identity _ _ (@idn C D) (@compn C D) (@nats_equivMixin C D).
+Lemma funs_compm0 : @Category.identity_morphism_is_right_identity@{u''} _ _ (@idn C D) (@compn C D) (@nats_equivMixin@{u u' u''} C D).
 Proof. move => C' D' f X. apply compm0. Defined.
 
-Lemma funs_comp0m : @Category.identity_morphism_is_left_identity _ _ (@idn C D) (@compn C D) (@nats_equivMixin C D).
+Lemma funs_comp0m : @Category.identity_morphism_is_left_identity@{u''} _ _ (@idn C D) (@compn C D) (@nats_equivMixin@{u u' u''} C D).
 Proof. move => C' D' f X. apply comp0m. Defined.
 
-Lemma funs_comp_left : @Category.compatibility_left _ _ (@compn C D) (@nats_equivMixin C D).
+Lemma funs_comp_left : @Category.compatibility_left@{u''} _ _ (@compn C D) (@nats_equivMixin@{u u' u''} C D).
 Proof.
   move => ? ? ? f f' g /= H X.
   apply comp_left.
@@ -680,64 +718,62 @@ Proof.
   apply H.
 Defined.
 
-Lemma funs_comp_right : @Category.compatibility_right _ _ (@compn C D) (@nats_equivMixin C D).
+Lemma funs_comp_right : @Category.compatibility_right@{u''} _ _ (@compn C D) (@nats_equivMixin@{u u' u''} C D).
 Proof.
   move => ? ? ? f f' g /= H X.
   apply comp_right.
   move: f f' H => [f ? ?] [f' ? ?] H.
   apply H.
 Defined.
-Canonical funs_catMixin := CatMixin funs_associativity funs_compm0 funs_comp0m funs_comp_left funs_comp_right.
-Canonical funs := Eval hnf in CatType (functor@{o o' m m'} C D) funs_catMixin.
+Canonical funs_catMixin := CatMixin@{u''} funs_associativity funs_compm0 funs_comp0m funs_comp_left funs_comp_right.
+Canonical funs := Eval hnf in CatType@{u''} (functor@{u u'} C D) funs_catMixin.
 End Funs.
 Notation "'Fun' ( C , D )" := (funs C D).
-Notation "'Nat' ( M , N )" := (morph (funs _ _) M N) (at level 5).
 
 Section Cats.
 Section Isomorphism.
-Inductive natural_isomorphisms@{o o' m m'}
-          (C : category@{o m})
-          (D : category@{o' m'})
-          (F G : functor@{o o' m m'} C D)
-          (N : natural_transformation@{o o' m m'} F G)
-          (M : natural_transformation@{o' o m' m} G F)
-: Type@{max(m, m')} :=
+Inductive natural_isomorphisms@{u u'}
+          (C : category@{u})
+          (D : category@{u'})
+          (F G : functor@{u u'} C D)
+          (N : natural_transformation@{u u'} F G)
+          (M : natural_transformation@{u' u} G F)
+: Type@{max(u,u')} :=
   NaturalIsomorphisms :
-    (forall X, isomorphisms@{o' m'} (N X) (M X)) -> 
+    (forall X, isomorphisms@{u'} (N X) (M X)) -> 
     natural_isomorphisms N M.
 
 Arguments natural_isomorphisms {_ _ _ _} _ _.
 Arguments NaturalIsomorphisms {_ _ _ _} _ _ _.
-Hint Constructors natural_isomorphisms.
 
-Universes o o' m m' f.
-Constraint m <= f.
-Constraint m' <= f.
-Variable C : category@{o m}.
-Variable D : category@{o' m'}.
+Universes u u' u''.
+Constraint u <= u''.
+Constraint u' <= u''.
+Variable C : category@{u}.
+Variable D : category@{u'}.
 Local Notation pniso :=
-  (fun F G => (pairing@{f} (@natural_isomorphisms@{o o' m m'} C D F G))).
-Lemma pniso_sym : Equivalence.symmetricity@{f} pniso.
+  (fun F G => (pairing (@natural_isomorphisms C D F G))).
+Lemma pniso_sym : Equivalence.symmetricity pniso.
 Proof.
 move => ? ?.
-move=> [N M] [H]; apply (Pairing@{f} M N).
-apply NaturalIsomorphisms@{o o' m m'} => X.
+move=> [N M] [H]; apply (Pairing M N).
+apply NaturalIsomorphisms => X.
 case: (H X) => H1 H2; by constructor.
 Defined.
 
-Lemma pniso_refl : Equivalence.reflexivity@{f} pniso.
+Lemma pniso_refl : Equivalence.reflexivity pniso.
 Proof.
-move => X; apply: Pairing@{f}.
-apply (@NaturalIsomorphisms@{o o' m m'} _ _ _ _ (idn@{o o' m m'} X) (idn@{o o' m m'} X)) => x.
-apply: Isomorphisms@{o' m'} => /=;
+move => X; apply: Pairing.
+apply (@NaturalIsomorphisms _ _ _ _ (idn X) (idn X)) => x.
+apply: Isomorphisms => /=;
 apply/symP; by apply comp0m.
 Defined.
 
-Lemma pniso_trans : Equivalence.transitivity@{f} pniso.
+Lemma pniso_trans : Equivalence.transitivity pniso.
 Proof.
 move => ? ? ?.
 move => [N1 M1] [H1] [N2 M2] [H2];
-apply: Pairing@{f};
+apply: Pairing;
 apply (@NaturalIsomorphisms _ _ _ _ (N2 \compn N1) (M1 \compn M2)) => /= X;
 case: (H1 X) => /= [H11 ?];
 case: (H2 X) => /= [? H22];
@@ -750,43 +786,15 @@ apply subst_right => /=;
 (apply: Congruence.etrans; first (by apply: comp0m));
 apply subst_left; by apply/symP.
 Defined.
-Definition funs_equivMixin := Eval hnf in EquivMixin pniso_sym pniso_trans@{f o} pniso_refl@{f}.
-Definition funs_equivType := Eval hnf in EquivType (functor@{o o' m m'} C D) funs_equivMixin.
+Definition funs_equivMixin := Eval hnf in EquivMixin pniso_sym pniso_trans pniso_refl.
+Definition funs_equivType := Eval hnf in EquivType (functor@{u u'} C D) funs_equivMixin.
 End Isomorphism.
 
-Lemma compf0 C D (f : Fun(C, D)) :
-  @equiv_op (funs_equivType C D) f (f \compf (@idf C)).
-Proof.
-  set L := NatType _ _ (@NatMixin _ _ f (f \compf idf _) (idn _) (idn_map_naturality _)).
-  set R := NatType _ _ (@NatMixin _ _ (f \compf idf _) f (idn _) (idn_map_naturality _)).
-  apply: Pairing;
-  apply (@NaturalIsomorphisms _ _ _ _ L R).
-  move => X; apply: Isomorphisms => /=;
-  apply/symP; by apply: comp0m.
-Qed.
-  
-Lemma comp0f (C D : category) (f : Fun (C, D)) :
-  @equiv_op (funs_equivType C D) f ((@idf D) \compf f).
-Proof.
-  set L := NatType _ _ (@NatMixin _ _ f (idf _ \compf f) (idn _) (idn_map_naturality _)).
-  set R := NatType _ _ (@NatMixin _ _ (idf _ \compf f) f (idn _) (idn_map_naturality _)).
-  apply: Pairing;
-  apply (@NaturalIsomorphisms _ _ _ _ L R);
-  move => X; apply: Isomorphisms => /=;
-  apply/symP; by apply: compm0.
-Qed.
-
-Lemma compn0 C D (f g : Fun (C, D)) (n : Nat (f, g)) :
-  @equiv_op (nats_equivType f g) n (n \compn (idn f)).
-move=> X; by apply: compm0.
-Qed.
-
-Lemma comp0n C D (f g : Fun (C, D)) (n : Nat (f, g)) :
-  @equiv_op (nats_equivType f g) n ((idn g) \compn n).
-move=> X; by apply: comp0m.
-Qed.
-
-Lemma cats_associativity : @Category.associativity_of_morphisms category _ compf funs_equivMixin.
+Universes u u' u'' u'''.
+Constraint u <= u'''.
+Constraint u' <= u'''.
+Constraint u'' <= u'''.
+Lemma cats_associativity : @Category.associativity_of_morphisms@{u'''} _ _ compf@{u u' u''} funs_equivMixin.
 Proof.
   move => /= C D E F h i j.
   set L := NatType _ _ (@NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (idn _) (idn_map_naturality _)).
@@ -796,20 +804,29 @@ Proof.
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
-
-Lemma cats_compm0 : @Category.identity_morphism_is_right_identity category _ idf compf funs_equivMixin.
+Lemma cats_compm0 : @Category.identity_morphism_is_right_identity@{u'''} category _ idf compf@{u u' u''} funs_equivMixin.
 Proof.
   move => /= C D f.
-  by apply: compf0.
+  set L := NatType _ _ (@NatMixin _ _ f (f \compf idf _) (idn _) (idn_map_naturality _)).
+  set R := NatType _ _ (@NatMixin _ _ (f \compf idf _) f (idn _) (idn_map_naturality _)).
+  apply: Pairing;
+  apply (@NaturalIsomorphisms _ _ _ _ L R).
+  move => X; apply: Isomorphisms => /=;
+  apply/symP; by apply: comp0m.
 Defined.
 
-Lemma cats_comp0m : @Category.identity_morphism_is_left_identity category _ idf compf funs_equivMixin.
+Lemma cats_comp0m : @Category.identity_morphism_is_left_identity@{u'''} category _ idf compf@{u u' u''} funs_equivMixin.
 Proof.
   move => /= C D f.
-  by apply: comp0f.
+  set L := NatType _ _ (@NatMixin _ _ f (idf _ \compf f) (idn _) (idn_map_naturality _)).
+  set R := NatType _ _ (@NatMixin _ _ (idf _ \compf f) f (idn _) (idn_map_naturality _)).
+  apply: Pairing;
+  apply (@NaturalIsomorphisms _ _ _ _ L R);
+  move => X; apply: Isomorphisms => /=;
+  apply/symP; by apply: compm0.
 Defined.
 
-Lemma cats_comp_left : @Category.compatibility_left category _ compf funs_equivMixin.
+Lemma cats_comp_left : @Category.compatibility_left@{u'''} category _ compf@{u u' u''} funs_equivMixin.
 Proof.
   move => ? ? ? f f' g [N M [H]].
   apply: (Pairing 
@@ -825,7 +842,7 @@ Proof.
   by apply: pres_equiv.
 Defined.
 
-Lemma cats_comp_right : @Category.compatibility_right category _ compf funs_equivMixin.
+Lemma cats_comp_right : @Category.compatibility_right@{u'''} category _ compf@{u u' u''} funs_equivMixin.
 Proof.
   move => ? ? ? f g g' [N M] [H].
   set L := NatType _ _ (@NatMixin _ _ (g \compf f) (g' \compf f)
@@ -836,8 +853,8 @@ Proof.
   apply (@NaturalIsomorphisms _ _ _ _ L R) => X;
   apply: Isomorphisms; by case: (H (f X)).
 Defined.
-End Cats.
 Canonical cats_catMixin := Eval hnf in CatMixin cats_associativity cats_compm0 cats_comp0m cats_comp_left cats_comp_right.
-Canonical cats := Eval hnf in CatType category cats_catMixin.
+Canonical cats := Eval hnf in CatType@{u'''} category cats_catMixin.
 Canonical obs_equivType.
 Canonical cats_obs_equivType := Eval hnf in EquivType category (obs_equivMixin cats).
+End Cats.
