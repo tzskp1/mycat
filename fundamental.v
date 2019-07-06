@@ -87,7 +87,7 @@ Notation "'Mor' ( M , N )" := (@morphisms _ (class _) M N) (at level 5).
 Definition morph C := @morphisms (sort C) (class C).
 Arguments morph _ _ _ : clear implicits.
 Notation compm := compm.
-Arguments compm {_ _ A B C} _ _ /.
+Arguments compm {_ _ A B C} _ _: simpl never.
 Notation equiv C := (equiv (class C)).
 Notation compmA := compmA.
 Notation compm0 := compm0.
@@ -801,152 +801,126 @@ Canonical cats := Eval hnf in CatType@{u'''} category cats_catMixin.
 Canonical cats_obs_equivType := Eval hnf in EquivType category (obs_equivMixin cats).
 Canonical obs_equivType.
 End Cats.
-Arguments compm : simpl never.
-Section FunPrfK.
+
+Module funAlt.
+Section FunAlt.
+Variables C D : category.
+Variable map : Map C -> Map D.
+Variable pres_doms :
+  forall A B C (f : Mor(A, B)) (g : Mor (B, C)), cod (map `f) == dom (map `g).
+Local Notation mapo A := (cod (map ` (Category.id A))).
+Local Definition mapm A B (f : Mor(A, B)) : Mor(mapo A, mapo B) :=
+  (pres_doms id id).2 \compm (pres_doms f id).1 \compm map `f \compm (pres_doms id f).1.
+Arguments mapm /.
 Import PartialEquiv.
-Lemma fun_prfK C D (F G : Fun(C, D))
-  (L : forall A : Ob C, Mor(F A, G A))
-  (R : forall A : Ob C, Mor(G A, F A))
-  (Ln : forall f : Map C,
-      (L dom f) \compm 'F f == 'G f \compm (L cod f)) :
-  
-      ->
-      == (R cod f) \compm 'G f
-      isomorphisms (L f) (R f)) -> F == G.
+Variable id_id : Functor.maps_identity_to_identity mapm.
+Variable pres_comp : Functor.preserve_composition mapm.
+Variable pres_equiv : Functor.preserve_equivalence mapm.
+Definition mapm_Mixin := FunMixin id_id pres_comp pres_equiv.
+Definition funalt := FunType C D mapm_Mixin.
+End FunAlt.
+Section FunAlt.
+Variables C D : category.
+Variable F : Fun (C, D).
+Local Definition map (f : Map C) : Map D := ` ('F f).
+Arguments map /.
+Arguments mapm /.
+Local Lemma pres_doms :
+  forall A B C (f : Mor(A, B)) (g : Mor (B, C)), cod (map `f) == dom (map `g).
+Proof. move=> A B C' f g /=; by apply/reflP. Defined.
+
+Import PartialEquiv.
+Lemma mapmK E (A B : Ob E) (f : Mor(A, B)) :
+  ((id \compm id) \compm f) \compm id == f.
 Proof.
-  move=> H.
-  have Nn : NaturalTransformation.naturality_axiom (fun _ => (L ` id).1).
-  move=> A A' f /=.
-  move: (R ` f) (L ` f) (H ` f)
-  => [/= r1 r2 r12] [/= l1 l2 l12] [[/= rl1 rl2] [/= lr1 lr2]].
-  /=.
-  case: (H ` f) => /=.
-  move: (H ` f).1 => /=.
-  Check 
-  case: (H ` f) => [[/= fgd fgc] fg [/= gfd gfc] gf] [[/= did cid] [/= did' cid']].
-  
-Variable C : category.
-Variable f g : Map C.
-Variable H : (f == g).
-Goal False.
-  move=> H.
-  have: (H ` (Category.id A)).1.1 == (H `f).1.1.
-  case: (H ` (Category.id A)) => [[/= f1AA g1AA H1AA] [/= f2AA g2AA H2AA]] [[/= S11 S12] [/= S21 S22]].
-  case: (H ` f) => [[/= f1AAf g1AAf H1AAf] [/= f2AAf g2AAf H2AAf]] [[/= S11f S12f] [/= S21f S22f]].
-  
-  case: (H ` (Category.id A)) => /=.
-  intros.
-  rewrite equivE /=.
-  case: (H 
-  subst H.
-  
-  About Isomorphisms.
-  Check (Pairing (@Isomorphisms _ _ _ (H `f).1.1 (H ` (Category.id A)).1.2 _ _) _).
-            _ _ (fun _ _ => (@Isomorphisms _ _ _ (H `f).1.1 _ _))).
-  
-  Check (Pairing
-           (Isomorphisms S21 _)
-           _
-            _).
-  
-           (Isomorphisms S21 _)
-            _).
-              _ _ _ (H `f).1.2 _ _)
-  
-  
-  Check (H `f).1.1.
-  apply: Isomorphisms.
-  apply S22.
-  Check (H `f).1.2.
-  apply: (@Isomorphisms _ _ _ (H `f).1.2 _ _).
-  About Isomorphisms.
-            (Pairing 
-               (H `f).2 (H ` (Category.id A)).2 _)
-         ).
-  rewrite equivE /=.
-  apply: pair.
-  rewrite /=.
-                           S1.
-  rewrite /= equivE.
-  case: (H A A id) => /= 
-  case: (H A' A' id) => /= [[f1AA' g1AA' [H1AA'1 H1AA'2]] [f2AA' g2AA' [H2AA'1 H2AA'2]]] S2.
-  
-  case: (H A A id).
-  rewrite equivE /=.
-  
-  apply: Congruence.etrans; first apply: comp0m.
-  apply: Congruence.etrans; first apply: subst_left.
-  apply/symP; apply: H1AA'2.
-  apply: Congruence.etrans.
-  apply: compmA.
-  apply: Congruence.etrans.
-  apply: subst_right. apply/symP; apply: compmA.
-  apply: Congruence.etrans.
-  apply: subst_right. 
-  apply: subst_left.
-  apply: H1AA'1.
-  apply: Congruence.etrans.
-  apply: subst_right. 
-  apply/symP; apply: comp0m.
-  
-  case: (H A A' f) => /= [[f1 g1 [H11 H12]] [f2 g2 [H21 H22]]] f2f1.
-  
-  case: H1AA => H1AA1 H1AA2.
-  move: S3 => /=.
-  move: f1AA f1AA' S1 S2 H1AA'1 H1AA'2 H1AA => /=.
-  apply: subst_left.
-  
-  case: (H A A' f).
-  case=>[f1AA' g1AA' H1AA'].
-  case=>[f2AA' g2AA' H2AA'].
-  rewrite equivE /=.
-  
-  
-  
-  
-  apply/symP; 
-  rewrite /=.
-  move=> 
-  
-  intros.
-  case: H1.
-  case:(H A' A' (g1 \compm f1)).
-                       ? ? H'.
+apply: Congruence.etrans; first (apply/symP; apply: compm0).
+apply: Congruence.etrans; first (apply: subst_left; apply/symP; apply: compm0).
+apply: Congruence.etrans; first (apply/symP; apply: comp0m).
+apply/reflP.
+Defined.
+
+Local Definition alt : Fun (C, D).
+apply: (@funalt _ _ map pres_doms _ _ _).
+- move=> x /=.
+  apply: Congruence.etrans; first apply mapmK.
+  by apply id_id.
+- move=> x y z f g /=.
+  apply: Congruence.etrans; first apply mapmK.
   apply: Congruence.etrans; last first.
-  apply H'.
+   apply: subst_right.
+   apply/symP; apply mapmK.
+  apply: Congruence.etrans; last first.
+   apply: subst_left.
+   apply/symP; apply mapmK.
+  apply: pres_comp.
+- move=> ? ? f f' H /=.
+  do !apply: compm_comp; try by apply/reflP.
+  by apply: pres_equiv.
+Defined.
+End FunAlt.
+Section FunAlt.
+Variables C D : category.
+Arguments alt /.
+Arguments mapm /.
+(* Local Lemma mapE (F G : Fun (C, D)) : (forall f, map F f == map G f) -> alt F == alt G. *)
+(* move=> H. *)
+(* have Hx: forall X, F X == G X. *)
+(*  move=> X; case: (H ` (Category.id X)) => [[/= f ? ?] [/= g ? ?] [[/= gf ?] [/= fg ?]]]. *)
+(*  apply (Pairing f g (Isomorphisms fg gf)). *)
+(* set FG := (fun X => match Hx X in (_ = y) return Mor(F X, y) with *)
+(*                     | erefl => id *)
+(*                     end). *)
+(* set GF := (fun X => match Hx X in (_ = y) return Mor(y, F X) with *)
+(*                     | erefl => id *)
+(*                     end). *)
+(* apply: (Pairing *)
+(*           (NatType F G (@NatMixin _ _ _ _ FG _)) *)
+(*           (NatType G F (@NatMixin _ _ _ _ GF _)) _). *)
+
+(* have: Nat (alt F, alt G). *)
+(* apply: (NatType _ _ _). *)
+(* apply: (@NatMixin _ _ _ _ _ _). *)
+(* rewrite /=. *)
+(* apply: (NatType _ _ _). *)
+(* constructor. *)
+
+(* move: F G => [Fo [Fm Fi Fc Fe] ? ?] [Go [Gm Gi Gc Ge] ? ?]. *)
+
+(*           (NatType G F (@NatMixin _ _ G F R RA')) _). *)
+(* rewrite equivE /=. *)
+(* move=> [[/= L [/= LA] ?] [/= R [/= RA] ?] [/=]]. *)
+(* rewrite H. *)
   
-  apply/symP;
-  a
-  apply: Congruence.etrans; last (apply/symP; apply: compm0).
-  apply: Congruence.etrans; last (apply: subst_right; apply: HKr).
-  apply: Congruence.etrans; last apply: compmA.
-  case: (H A A' f).
-  move=> H1 H2.
-  case: H1 => /= f1 g1 [Hf1 Hg1].
-  case: H2 => /= f2 g2 [Hf2 Hg2].
-  rewrite !equivE /=.
-  move=> H'.
-  apply: Congruence.etrans.
-  apply H'.
-  
-  rewrite equivE /=.
-  set M := (fun X => (H X X id).2.2).
-  case: (H A' A' id).
-  move=> H1' H2' /=.
-  case => ? ?.
-  case.
-  case.
-  rewrite /=.
-  subst N.
-  rewrite /=.
-  apply: (Pairing (NatType _ _ (@NatMixin _ _ _ _ (fun X => (H X X id).1.1) _))
-                  (NatType _ _ (@NatMixin _ _ _ _ (fun X => (H X X id).1.2) _))).
-  apply: Isomorphisms.
-  move=> X.
-  case: 
-  case=> f1 g1 [H11 H12].
-  case=> f2 g2 [H21 H22].
-  rewrite /=.
+Lemma altE (F G : Fun (C, D)) : alt F == alt G -> F == G.
+move: F G => [Fo [Fm Fi Fc Fe] ? ?] [Go [Gm Gi Gc Ge] ? ?].
+move=> [[/= L [/= LA] ?] [/= R [/= RA] ?] [/=]].
+set F := Functor.Pack (FunMixin Fi Fc Fe) _ _.
+set G := Functor.Pack (FunMixin Gi Gc Ge) _ _.
+have LA': NaturalTransformation.naturality_axiom (L : forall X : C, Mor (F X, G X)).
+ move=> ? ? f; move: (LA _ _ f) => /= LA''.
+ apply: Congruence.etrans.
+  apply: subst_right; apply/symP; apply: mapmK.
+ apply: Congruence.etrans; first apply LA''.
+ apply: subst_left.
+ apply mapmK.
+have RA': NaturalTransformation.naturality_axiom (R : forall X : C, Mor (G X, F X)).
+ move=> ? ? f; move: (RA _ _ f) => /= RA''.
+ apply: Congruence.etrans.
+  apply: subst_right; apply/symP; apply: mapmK.
+ apply: Congruence.etrans; first apply RA''.
+ apply: subst_left.
+ apply mapmK.
+move=> H1 H2.
+refine (Pairing
+          (NatType F G (@NatMixin _ _ F G L LA'))
+          (NatType G F (@NatMixin _ _ G F R RA')) _).
+apply: Isomorphisms; move=> X.
+apply: (H1 X).
+apply: (H2 X).
+Defined.
+End FunAlt.
+Arguments alt /.
+Arguments map /.
 
 (* universe cancel functors *)
 Module Down.
@@ -995,6 +969,8 @@ Definition get_up_mor (C : category@{t}) (a b : Category.sort (down C))
            (f : morph (down C) a b) : morph C (get_up a) (get_up b).
 case: C a b f => ? [] //=.
 Defined.
+Lemma up_down C (X : Ob (Down.down C)) : Down.get_down (Down.get_up X) = X.
+by case: C X => ? [] /=. Defined.
 End Down.
 End Down.
 
@@ -1013,18 +989,24 @@ case: C => ? [] //=; intros; move=> ?; intros; apply/reflP.
 case: C => ? [] //=; intros.
 move=> ? ? ? ?; by rewrite equivE /= Equivalence.downK.
 Defined.
-Lemma down_upK C : down C \compf up C == idf (Down.down C).
+
+Lemma down_upK C : down C \compf up C = idf (Down.down C).
 Proof.
-  case: C => ? [] /=.
-  intros.
+  rewrite Down.up_down.
+  
+  forall (map0 : forall X : Down.down C, Mor (Down.get_down (Down.get_up X), X))
+Variable C : category.
+Variable (H : down C \compf up C == idf (Down.down C)).
+Goal False.
+  case: H => /= [] [] /=.
   rewrite equivE /=.
-  apply: Pairing.
-  apply: Isomorphisms.
-  apply/symP.
-  apply: compm0.
+  have: Nat(down C \compf up C, idf _).
+  apply (NatType _ _ (@NatMixin _ _ _ _ (fun x => id) _)).
+  apply: idn.
   apply (Pairing (@idn (Down.down _)) _ _).
   vm_compute.
   apply (Pairing (@idn (Down.down C)) _ _).
   rewrite /=.
+  intros.
 
 Coercion Category.down : category >-> category.
