@@ -6,6 +6,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
+Set Printing Universes.
 
 Definition smush C D (A : Ob D) :=
   FunType C D (@FunMixin C D (fun _ : Ob C => A)
@@ -16,30 +17,168 @@ Definition smush C D (A : Ob D) :=
 
 Section Point.
 Inductive point_ob := pt : point_ob.
-
 Definition point_mor (x y : point_ob) := point_ob.
 Definition point_comp (x y z : point_ob) : point_mor y z -> point_mor x y -> point_mor x z := (fun _ _ => pt).
-
 Lemma point_associativity : @Category.associativity_of_morphisms _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
 Proof. move => /= C D E F h i j; by apply/reflP. Defined.
-
 Lemma point_compm0 : @Category.identity_morphism_is_right_identity _ _ (fun _ => pt) point_comp (fun _ _ => trivial_equivMixin point_ob).
 Proof. move => /= C D []; by apply/reflP. Defined.
-
 Lemma point_comp0m : @Category.identity_morphism_is_left_identity _ _ (fun _ => pt) point_comp (fun _ _ => trivial_equivMixin point_ob).
 Proof. move => /= C D []; by apply/reflP. Defined.
-
 Lemma point_comp_left : @Category.compatibility_left _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
 Proof. move => [] [] [] [] [] [] _; by apply/reflP. Defined.
-
 Lemma point_comp_right : @Category.compatibility_right _ _ point_comp (fun _ _ => trivial_equivMixin point_ob).
 Proof. move => [] [] [] [] [] [] _; by apply/reflP. Defined.
-End Point.
-
 Canonical point_catMixin :=
-  Eval hnf in @CatMixin point_ob point_mor (fun _ => pt) point_comp _ point_associativity point_compm0 point_comp0m point_comp_left point_comp_right.
+  Eval hnf in CatMixin point_associativity point_compm0 point_comp0m point_comp_left point_comp_right.
 Canonical point_catType := Eval hnf in CatType _ point_catMixin.
 Coercion pto_pt (_ : point_ob) := point_catType.
+End Point.
+
+Section Point.
+Local Notation "f == g" := (equiv_op f g).
+Variable C : category.
+Local Definition sp := @smush pt C.
+Local Definition Fm : forall x y, Mor (x, y) -> Mor(sp x, sp y).
+refine (fun x y (f : Mor(x, y)) => (NatType _ _ (@NatMixin _ _ (sp x) (sp y) (fun _ => f) _))).
+move=> ? ? ? /=.
+apply: Congruence.etrans.
+apply/symP; apply: compm0.
+apply: comp0m.
+Defined.
+Definition ptC_id_id : Functor.maps_identity_to_identity Fm.
+move=> ? ? /=; by apply/reflP.
+Defined.
+Definition ptC_pres_comp : Functor.preserve_composition Fm.
+move=> ? ? ? ? ? ? /=; by apply/reflP.
+Defined.
+Definition ptC_pres_equiv : Functor.preserve_equivalence Fm.
+by move=> ? ? ? ? ? /=.
+Defined.
+Definition ptC_Mixin := FunMixin ptC_id_id ptC_pres_comp ptC_pres_equiv.
+Definition ptC := FunType _ _ ptC_Mixin.
+Local Definition Gm : forall (x y : Fun(pt, C)), Nat(x, y) -> morph C (x pt) (y pt).
+move=> x y f /=.
+apply: (f pt).
+Defined.
+Definition Cpt_id_id : Functor.maps_identity_to_identity Gm.
+move=> ? /=; by apply/reflP.
+Defined.
+Definition Cpt_pres_comp : Functor.preserve_composition Gm.
+move=> ? ? ? ? ? /=; by apply/reflP.
+Defined.
+Definition Cpt_pres_equiv : Functor.preserve_equivalence Gm.
+move=> ? ? [f ? ?] [f' ? ?].
+apply.
+Defined.
+Definition Cpt_Mixin := FunMixin Cpt_id_id Cpt_pres_comp Cpt_pres_equiv.
+Definition Cpt := FunType _ _ Cpt_Mixin.
+Section SpK.
+Variable F : Fun(pt, C).
+Definition spF x : Mor(sp (F pt) x, F x) :=
+  match x with
+  | pt => id
+  end.
+Definition Fsp x : Mor(F x, (smush pt (F pt)) x) :=
+  match x with
+  | pt => id
+  end.
+
+Lemma spK : F == smush pt (F pt).
+ have H1: NaturalTransformation.naturality_axiom Fsp.
+  move=> [] [] [].
+  apply: Congruence.etrans.
+  apply/symP; apply: comp0m.
+  apply: Congruence.etrans; last apply: compm0.
+  by apply: id_id.
+ have H2: NaturalTransformation.naturality_axiom spF.
+  move=> [] [] [] /=.
+  apply: Congruence.etrans.
+  apply/symP; apply: compm0.
+  apply: Congruence.etrans; last apply: compm0.
+  apply/symP; apply: id_id.
+refine (Pairing
+          (NatType _ _ (@NatMixin _ _ F (smush pt (F pt)) Fsp H1))
+          (NatType _ _ (@NatMixin _ _ (smush pt (F pt)) F spF H2)) _).
+constructor; case.
++ apply: Congruence.etrans; last (apply/symP; apply comp0m).
+  by apply: compm_comp; apply/reflP.
++ apply: Congruence.etrans; last (apply/symP; apply comp0m).
+  by apply: compm_comp; apply/reflP.
+Defined.
+End SpK.
+Lemma pointE : Fun(pt, C) == C.
+apply: (Pairing (down C \compf Cpt)
+                (ptC \compf up C) _).
+apply: Isomorphisms.
+
+apply (Pairing N M).
++ apply (@NaturalIsomorphisms _ _ _ _ N M _).
+  move=> ? ? ?.
+  apply: Congruence.etrans; last apply: compm0.
+  by apply/symP; apply: comp0m.
+  apply: Congruence.etrans; last apply: compm0.
+  by apply/symP; apply: comp0m.
+  by apply: Isomorphisms; apply/symP; apply: compm0.
+apply: NaturalIsomorphisms.
+move=> F; 
+apply: Isomorphisms => [] [].
+rewrite /=.
+  rewrite equivE /=.
+case:(spK F) => f g.
+apply.
+  move=> ?.
+  
+  move: (@spK C).
+apply (@Isomorphisms _ _ (Cpt : Mor(C, Fun(pt, C) : Ob cats)) ptC ).
+apply (Pairing ptC Cpt _).
+  
+Check (Fun(pt, C) : Ob cats).
+
+
+Local Notation N' := (@NatMixin _ _ (ptC \compf Cpt) (idf _) (fun F => (@NatMixin _ _ (smush pt (F pt)) F (proj1_sig (spF F)) _)) _).
+
+  rewrite equivE /=.
+  apply: Pairing.
+
+  apply (Isomorphisms Cpt ptC).
+apply: Isomorphisms.
+  do !apply: ex_intro; last first.
++ apply: (@NaturalIsomorphisms _ _ _ _ N' M' _).
+  move=> F [] [] [].
+  - apply: Congruence.etrans; first (apply/symP; apply compm0).
+    apply: Congruence.etrans; first apply comp0m.
+    by apply subst_left; apply/symP; apply id_id.
+  - move=> H [mo mm mi pc pe] [mo' mm' mi' pc' pe'] [n na] [] /=.
+    apply: Congruence.etrans; first (apply/symP; apply comp0m).
+    apply: Congruence.etrans; last (apply compm0).
+    apply/reflP.
+  - move=> F [] [] [].
+  - apply: Congruence.etrans; first (apply/symP; apply comp0m).
+    apply: Congruence.etrans; first apply compm0.
+    apply: compm_comp; last by apply: (proj2_sig (Fsp F)).
+    move=> /=; by apply id_id.
+  - move=> H [mo mm mi pc pe] [mo' mm' mi' pc' pe'] [n na] [] /=.
+    apply: Congruence.etrans; first (apply/symP; apply comp0m).
+    apply: Congruence.etrans; last (apply compm0).
+    apply/reflP.
+  - move=> H1 H2 H3 H4 F.
+    apply: Isomorphisms.
+     apply: Congruence.etrans; first apply H4.
+     apply: Congruence.etrans; last (apply/symP; apply comp0m).
+     apply: compm_comp; move=> []; by apply id_id.
+    suff : NatMixin H2 F \compn NatMixin H4 F == idn F => //.
+    apply: Congruence.etrans; last (apply/symP; apply comp0n).
+    move=> []; apply: compm_comp; by apply/reflP.
++ apply: (@NaturalIsomorphisms _ _ _ _ N M _);
+  move=> ? ? ?.
+  apply: Congruence.etrans; last apply: compm0.
+  by apply/symP; apply: comp0m.
+  apply: Congruence.etrans; last apply: compm0.
+  by apply/symP; apply: comp0m.
+  by apply: Isomorphisms; apply/symP; apply: compm0.
+Qed.
+End Point.
 
 Section Ordinal.
 Variable n : nat.
@@ -415,204 +554,6 @@ Notation "a * b" := (prod_catType a b).
 Arguments pfst / {_ _}.
 Arguments psnd / {_ _}.
 
-Section Point.
-Variable C : category.
-Local Definition sp := @smush pt C.
-Local Definition Fm: forall x y : C, Mor (x, y) -> Nat (sp x, sp y).
-refine (fun x y (f : Mor(x, y)) => (NatType _ _ (@NatMixin _ _ (sp x) (sp y) (fun _ => f) _))).
-move=> ? ? ? /=.
-apply: Congruence.etrans.
-apply/symP; apply: compm0.
-apply: comp0m.
-Defined.
-Definition ptC_id_id : Functor.maps_identity_to_identity Fm.
-move=> ? ? /=; by apply/reflP.
-Defined.
-Definition ptC_pres_comp : Functor.preserve_composition Fm.
-move=> ? ? ? ? ? ? /=; by apply/reflP.
-Defined.
-Definition ptC_pres_equiv : Functor.preserve_equivalence Fm.
-by move=> ? ? ? ? ? /=.
-Defined.
-Definition ptC_Mixin := FunMixin ptC_id_id ptC_pres_comp ptC_pres_equiv.
-Definition ptC := FunType _ _ ptC_Mixin.
-Lemma test : morph cats C (funs (pto_pt pt) C) -> Functor.type C (funs (pto_pt pt) C) .
-  Set Printing Universes.
-  Arguments morph /.
-  rewrite /=.
-  move=> H.
-  apply H.
-  
-   Check (ptC : morph cats C (funs (pto_pt pt) C)).
-          
-  Functor.type C (funs (pto_pt pt) C))
-  Check (morph cats C (funs (pto_pt pt) C) : Functor.type C (funs (pto_pt pt) C)).
-  apply erefl.
-  
-  rewrite /=.
-Show Universes.
-  Check (Fun(C, Fun(pt, C)) : cats).
-  Print cats.
-Set 
-  
-Universes u u'.
-Constraint u' < u.
-  vm_compute.
-  apply erefl.
-
-  apply ptC_Mixin.
-  
-Eval vm_compute in (morph cats C Fun(pt, C)).
-
-          
-
-Definition Cpt : Fun(Fun(pt, C), C).
-  apply: (FunType _ _ _).
-  apply: (@FunMixin _ _).
-  move=> ?.
-  apply: id_id.
-  apply: (FunType _ _ _).
-  apply (@FunMixin _ _ (fun (f: Fun(pt, C)) => f pt) (fun x y f => f pt) _ _ _).
-apply: (FunType _ _ 
-apply: (FunType _ _ (@FunMixin _ _ (fun (f: Fun(pt, C)) => f pt) (fun x y f => f pt) _ _ _))=>//.
-move=> x; by apply/reflP.
-move=> ?????; by apply/reflP.
-Defined.
-Section SpK.
-Variable F : Fun(pt, C).
-Definition spF x : Mor(sp (F pt) x, F x) :=
-  match x with
-  | pt => id
-  end.
-Definition Fsp x : Mor(F x, (smush pt (F pt)) x) :=
-  match x with
-  | pt => id
-  end.
-
-Local Definition spFn : Nat(smush pt (F pt), F).
-apply: (NatType _ _ (@NatMixin _ _ (smush pt (F pt)) F spF _)).
-move=> [] [] [] /=.
-apply: Congruence.etrans.
-apply/symP; apply: compm0.
-apply: Congruence.etrans; last apply: compm0.
-apply/symP; apply: id_id.
-Defined.
-
-Local Definition Fspn : Nat(F, smush pt (F pt)).
-apply: (NatType _ _ (@NatMixin _ _ F (smush pt (F pt)) Fsp _)).
-move=> [] [] [] /=.
-apply: Congruence.etrans.
-apply/symP; apply: comp0m.
-apply: Congruence.etrans; last apply: compm0.
-apply: id_id.
-Defined.
-
-Lemma spK : F == smush pt (F pt).
-apply: (Pairing Fspn spFn).
-constructor; case.
-+ apply: Congruence.etrans; last (apply/symP; apply comp0m).
-  by apply: compm_comp; apply/reflP.
-+ apply: Congruence.etrans; last (apply/symP; apply comp0m).
-  by apply: compm_comp; apply/reflP.
-Defined.
-End SpK.
-
-Local Notation N := (NatType _ _ (@NatMixin _ _ (Cpt \compf ptC) (idf C) (fun X => id) _)).
-Local Notation M := (NatType _ _ (@NatMixin _ _ (idf C) (Cpt \compf ptC) (fun X => id) _)).
-End Point.
-Lemma test C : morph cats Fun (pt, C) C.
-  Set Printing All.
-  rewrite /=.
-  apply: (FunType _ _ _).
-  refine (@FunMixin _ _ _ (fun x y (f : Nat(x, y)) => f pt) _ _ _ ).
-  apply (@FunMixin _ _ (fun (f: Fun(pt, C)) => f pt)  _ _ _).
-apply (FunType _ _ 
-move=> x; by apply/reflP.
-move=> ?????; by apply/reflP.
-Defined.
-
-Lemma pointE : Fun(pt, C) == C.
-  have Cpt': 
-  move: Cpt => /=.
-  Set Printing All.
-  move=> H.
-  apply H.
-  rewrite /=.
-  exact Cpt.
-refine (Pairing Cpt _ _).
-  About Cpt.
-refine (Pairing (@f2m C (Fun(point_catType, C)) ptC) (f2m Cpt) _).
-Check point_catType.
-
-apply (Pairing ptC Cpt).
-apply: Isomorphisms.
-apply (Pairing N M).
-+ apply (@NaturalIsomorphisms _ _ _ _ N M _).
-  move=> ? ? ?.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  by apply: Isomorphisms; apply/symP; apply: compm0.
-apply: NaturalIsomorphisms.
-move=> F; 
-apply: Isomorphisms => [] [].
-rewrite /=.
-  rewrite equivE /=.
-case:(spK F) => f g.
-apply.
-  move=> ?.
-  
-  move: (@spK C).
-apply (@Isomorphisms _ _ (Cpt : Mor(C, Fun(pt, C) : Ob cats)) ptC ).
-apply (Pairing ptC Cpt _).
-  
-Check (Fun(pt, C) : Ob cats).
-
-
-Local Notation N' := (@NatMixin _ _ (ptC \compf Cpt) (idf _) (fun F => (@NatMixin _ _ (smush pt (F pt)) F (proj1_sig (spF F)) _)) _).
-
-  rewrite equivE /=.
-  apply: Pairing.
-
-  apply (Isomorphisms Cpt ptC).
-apply: Isomorphisms.
-  do !apply: ex_intro; last first.
-+ apply: (@NaturalIsomorphisms _ _ _ _ N' M' _).
-  move=> F [] [] [].
-  - apply: Congruence.etrans; first (apply/symP; apply compm0).
-    apply: Congruence.etrans; first apply comp0m.
-    by apply subst_left; apply/symP; apply id_id.
-  - move=> H [mo mm mi pc pe] [mo' mm' mi' pc' pe'] [n na] [] /=.
-    apply: Congruence.etrans; first (apply/symP; apply comp0m).
-    apply: Congruence.etrans; last (apply compm0).
-    apply/reflP.
-  - move=> F [] [] [].
-  - apply: Congruence.etrans; first (apply/symP; apply comp0m).
-    apply: Congruence.etrans; first apply compm0.
-    apply: compm_comp; last by apply: (proj2_sig (Fsp F)).
-    move=> /=; by apply id_id.
-  - move=> H [mo mm mi pc pe] [mo' mm' mi' pc' pe'] [n na] [] /=.
-    apply: Congruence.etrans; first (apply/symP; apply comp0m).
-    apply: Congruence.etrans; last (apply compm0).
-    apply/reflP.
-  - move=> H1 H2 H3 H4 F.
-    apply: Isomorphisms.
-     apply: Congruence.etrans; first apply H4.
-     apply: Congruence.etrans; last (apply/symP; apply comp0m).
-     apply: compm_comp; move=> []; by apply id_id.
-    suff : NatMixin H2 F \compn NatMixin H4 F == idn F => //.
-    apply: Congruence.etrans; last (apply/symP; apply comp0n).
-    move=> []; apply: compm_comp; by apply/reflP.
-+ apply: (@NaturalIsomorphisms _ _ _ _ N M _);
-  move=> ? ? ?.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  by apply: Isomorphisms; apply/symP; apply: compm0.
-Qed.
-End Point.
 
 Section Curry.
 Local Notation "f == g" := (equiv_op f g).

@@ -46,7 +46,7 @@ by apply: (@Mixin s op).
 Defined.
 Lemma downK (s : Type@{t}) (e : mixin_of@{t} s) a b :
   @op s (down e) a b = @op s e a b.
-Proof. case: e => //. Qed.
+Proof. by case: e. Defined.
 End Down.
 
 Module Exports.
