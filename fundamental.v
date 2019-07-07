@@ -376,43 +376,53 @@ End Functor.
 Export Functor.Exports.
 
 Module NaturalTransformation.
+Import PartialEquiv.
 Section Axioms.
 Universes u u'.
-Import PartialEquiv.
 Variable C : category@{u}.
 Variable D : category@{u'}.
-Variables F G : (functor@{u u'} C D).
-Variable map : forall X, Mor (F X, G X).
+Variable Fo Go : Ob C -> Ob D.
+Variable Fm : forall A B, Mor (A, B) -> Mor (Fo A, Fo B).
+Variable Gm : forall A B, Mor (A, B) -> Mor (Go A, Go B).
+Variable map : forall X, Mor (Fo X, Go X).
 Arguments map {X}.
 Definition naturality_axiom :=
-  forall A A' (f : Mor (A, A')), map \compm 'F f == 'G f \compm map.
+  forall A A' (f : Mor (A, A')), map \compm Fm f == Gm f \compm map.
 End Axioms.
 
-Structure mixin_of@{u u'} (C : category@{u}) (D : category@{u'}) F G natural_map :=
-  Mixin { naturality : @naturality_axiom C D F G natural_map }.
+Structure mixin_of@{u u'} (C : category@{u}) (D : category@{u'}) Fo Go Fm Gm natural_map :=
+  Mixin { naturality : @naturality_axiom C D Fo Go Fm Gm natural_map }.
 
 Local Notation class_of := mixin_of (only parsing).
+
+Definition axiom C D (F G : Fun(C, D))
+           (map : forall X, Mor(F X, G X)) :=
+  forall (A A' : Ob C) (f : Mor (A, A')),
+    map _ \compm 'F f == 'G f \compm map _.
 
 Section ClassDef.
 Universes u u'.
 Variable dom : category@{u}.
 Variable cod : category@{u'}.
-Structure type domf codf := Pack { map; _ : @class_of@{u u'} dom cod domf codf map; _ : Type@{u'} }.
-Variables (domfT codfT : functor@{u u'} dom cod) (cT : type domfT codfT)
+Structure type domfo codfo domfm codfm := Pack { map; _ : @class_of@{u u'} dom cod domfo codfo domfm codfm map; _ : Type@{u'} }.
+Variables (domfT codfT : functor@{u u'} dom cod)
+          (cT : @type (Functor.map domfT) (Functor.map codfT) (fun _ _ => 'domfT) (fun _ _ => 'codfT))
           (mapT : forall X , Mor(domfT X, codfT X)).
-Definition class := let: Pack _ c _ := cT return @class_of dom cod domfT codfT (map cT) in c.
-Definition pack c := @Pack domfT codfT mapT c (forall X, Mor(domfT X, codfT X)).
+Definition class := let: Pack _ c _ := cT return @class_of dom cod
+                                                           (Functor.map domfT) (Functor.map codfT)
+                                                           (fun _ _ => 'domfT) (fun _ _ => 'codfT)
+                                                           (map cT) in c.
+Definition pack c := @Pack _ _ (fun _ _ => 'domfT) (fun _ _ => 'codfT) mapT c (forall X, Mor(domfT X, codfT X)).
 End ClassDef.
 
 Module Notations.
-Definition app_nat dom cod f g (n : @type dom cod f g) := map n.
-Arguments app_nat /.
-Notation "'Nat' ( M , N )" := (@type _ _ M N) (at level 5).
-Coercion app_nat: type >-> Funclass.
-Notation natural_transformation := type.
+Coercion map : type >-> Funclass.
+Notation natural_transformation F G := (type (fun _ _ => 'F) (fun _ _ => 'G)).
+Notation "'Nat' ( M , N )" := (natural_transformation M N) (at level 5).
 Notation NatMixin := Mixin.
 Notation NatType F G m := (@pack _ _ F G _ m).
-Definition naturality' C D F G N := @naturality C D F G _ (class N).
+Definition naturality' C D F G N :=
+  @naturality C D _ _ (fun _ _ => 'F) (fun _ _ => 'G) _ (class N).
 Notation naturality :=  naturality'.
 Notation "[ 'NatMixin' 'of' T 'to' S ]" := (class _ : @mixin_of _ _ T S)
   (at level 0, format "[ 'NatMixin'  'of'  T 'to' S ]") : form_scope.
@@ -426,7 +436,7 @@ Variable C : category@{u}.
 Variable D : category@{u'}.
 Variable F : functor@{u u'} C D.
 Definition idn_map X := @Category.id@{u'} _ (Category.class D) (F X).
-Lemma idn_map_naturality : naturality_axiom idn_map.
+Lemma idn_map_naturality : axiom idn_map.
 move=> ? ? ? /=.
 apply: Congruence.etrans; last apply: compm0.
 by apply/symP; apply: comp0m.
@@ -445,7 +455,7 @@ Variables F G H : functor@{u u'} C D.
 Variable M : natural_transformation@{u u'} G H.
 Variable N : natural_transformation@{u u'} F G.
 Definition compn_map X := M X \compm N X.
-Lemma compn_naturality : naturality_axiom compn_map.
+Lemma compn_naturality : axiom compn_map.
 Proof.
 move => ? ? ?.
 apply: Congruence.etrans;
@@ -474,7 +484,7 @@ Variable F G : functor@{u u'} C D.
 Variable H : functor@{u' u''} D E.
 Variable N : natural_transformation@{u u'} F G.
 Definition compfn_map X := 'H (N X).
-Lemma compfn_naturality : @naturality_axiom C E (H \compf F) (H \compf G) compfn_map.
+Lemma compfn_naturality : @axiom C E (H \compf F) (H \compf G) compfn_map.
 Proof.
 move => ? ? ? /=.
 apply: Congruence.etrans;
@@ -499,7 +509,7 @@ Variable F G : functor@{u' u''} D E.
 Variable N : natural_transformation@{u' u''} F G.
 Variable H : functor@{u u'} C D.
 Definition compnf_map X := N (H X).
-Lemma compnf_naturality : @naturality_axiom C E (F \compf H) (G \compf H) compnf_map.
+Lemma compnf_naturality : @axiom C E (F \compf H) (G \compf H) compnf_map.
 Proof.
 move => ? ? ? /=.
 apply: naturality.
@@ -740,18 +750,18 @@ Constraint u'' <= u'''.
 Lemma cats_compmA : @Category.associativity_of_morphisms@{u'''} _ _ compf@{u u' u''} funs_equivMixin.
 Proof.
   move => /= C D E F h i j.
-  set L := NatType _ _ (@NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) (idn _) (idn_map_naturality _)).
-  set R := NatType _ _ (@NatMixin _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) (idn _) (idn_map_naturality _)).
   apply: Pairing.
-  apply (@NaturalIsomorphisms _ _ _ _ L R);
+  apply: (@NaturalIsomorphisms _ _ _ _
+                               (NatType _ _ (@NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) _ _ (fun _ => id) (@idn_map_naturality _ _ _)))
+                               (NatType _ _ (@NatMixin _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) _ _ (fun _ => id) (@idn_map_naturality _ _ _))));
   move => X; apply: Isomorphisms => /=;
   apply/symP; by apply: comp0m.
 Defined.
 Lemma cats_compm0 : @Category.identity_morphism_is_right_identity@{u'''} category _ idf compf@{u u' u''} funs_equivMixin.
 Proof.
   move => /= C D f.
-  set L := NatType _ _ (@NatMixin _ _ f (f \compf idf _) (idn _) (idn_map_naturality _)).
-  set R := NatType _ _ (@NatMixin _ _ (f \compf idf _) f (idn _) (idn_map_naturality _)).
+  set L := NatType _ _ (@NatMixin _ _ f (f \compf idf _) _ _ (idn _) (idn_map_naturality _)).
+  set R := NatType _ _ (@NatMixin _ _ (f \compf idf _) f _ _ (idn _) (idn_map_naturality _)).
   apply: Pairing;
   apply (@NaturalIsomorphisms _ _ _ _ L R).
   move => X; apply: Isomorphisms => /=;
@@ -761,8 +771,8 @@ Defined.
 Lemma cats_comp0m : @Category.identity_morphism_is_left_identity@{u'''} category _ idf compf@{u u' u''} funs_equivMixin.
 Proof.
   move => /= C D f.
-  set L := NatType _ _ (@NatMixin _ _ f (idf _ \compf f) (idn _) (idn_map_naturality _)).
-  set R := NatType _ _ (@NatMixin _ _ (idf _ \compf f) f (idn _) (idn_map_naturality _)).
+  set L := NatType _ _ (@NatMixin _ _ f (idf _ \compf f) _ _ (idn _) (idn_map_naturality _)).
+  set R := NatType _ _ (@NatMixin _ _ (idf _ \compf f) f _ _ (idn _) (idn_map_naturality _)).
   apply: Pairing;
   apply (@NaturalIsomorphisms _ _ _ _ L R);
   move => X; apply: Isomorphisms => /=;
@@ -773,9 +783,9 @@ Lemma cats_comp_left : @Category.compatibility_left@{u'''} category _ compf@{u u
 Proof.
   move => ? ? ? f f' g [N M [H]].
   apply: (Pairing 
-            (NatType _ _ (@NatMixin _ _ (g \compf f) (g \compf f')
+            (NatType _ _ (@NatMixin _ _ (g \compf f) (g \compf f') _ _
                                     (g \compfn N) (compfn_naturality _ _)))
-            (NatType _ _ (@NatMixin _ _ (g \compf f') (g \compf f)
+            (NatType _ _ (@NatMixin _ _ (g \compf f') (g \compf f) _ _
                                     (g \compfn M) (compfn_naturality _ _)))).
   apply: NaturalIsomorphisms => X.
   apply: Isomorphisms; case: (H X) => /= H1 H2;
@@ -788,9 +798,9 @@ Defined.
 Lemma cats_comp_right : @Category.compatibility_right@{u'''} category _ compf@{u u' u''} funs_equivMixin.
 Proof.
   move => ? ? ? f g g' [N M] [H].
-  set L := NatType _ _ (@NatMixin _ _ (g \compf f) (g' \compf f)
+  set L := NatType _ _ (@NatMixin _ _ (g \compf f) (g' \compf f) _ _
                                   (N \compnf f) (compnf_naturality _ _)).
-  set R := NatType _ _ (@NatMixin _ _ (g' \compf f) (g \compf f)
+  set R := NatType _ _ (@NatMixin _ _ (g' \compf f) (g \compf f) _ _
                                   (M \compnf f) (compnf_naturality _ _)).
   apply: Pairing.
   apply (@NaturalIsomorphisms _ _ _ _ L R) => X;
@@ -802,7 +812,7 @@ Canonical cats_obs_equivType := Eval hnf in EquivType category (obs_equivMixin c
 Canonical obs_equivType.
 End Cats.
 
-Module funAlt.
+Module FunAlt.
 Section FunAlt.
 Variables C D : category.
 Variable map : Map C -> Map D.
@@ -819,15 +829,21 @@ Variable pres_equiv : Functor.preserve_equivalence mapm.
 Definition mapm_Mixin := FunMixin id_id pres_comp pres_equiv.
 Definition funalt := FunType C D mapm_Mixin.
 End FunAlt.
+
 Section FunAlt.
 Variables C D : category.
-Variable F : Fun (C, D).
-Local Definition map (f : Map C) : Map D := ` ('F f).
+Variables Fo : Ob C -> Ob D.
+Variable Fm : forall A B, Mor(A, B) -> Mor(Fo A, Fo B).
+Local Definition map (f : Map C) : Map D := ` (Fm f).
 Arguments map /.
 Arguments mapm /.
 Local Lemma pres_doms :
   forall A B C (f : Mor(A, B)) (g : Mor (B, C)), cod (map `f) == dom (map `g).
 Proof. move=> A B C' f g /=; by apply/reflP. Defined.
+
+Variable id_id : Functor.maps_identity_to_identity (fun _ _ f => Fm f).
+Variable pres_comp : Functor.preserve_composition (fun _ _ f => Fm f).
+Variable pres_equiv : Functor.preserve_equivalence (fun _ _ f => Fm f).
 
 Import PartialEquiv.
 Lemma mapmK E (A B : Ob E) (f : Mor(A, B)) :
@@ -858,52 +874,35 @@ apply: (@funalt _ _ map pres_doms _ _ _).
   by apply: pres_equiv.
 Defined.
 End FunAlt.
+
 Section FunAlt.
-Variables C D : category.
 Arguments alt /.
 Arguments mapm /.
-(* Local Lemma mapE (F G : Fun (C, D)) : (forall f, map F f == map G f) -> alt F == alt G. *)
-(* move=> H. *)
-(* have Hx: forall X, F X == G X. *)
-(*  move=> X; case: (H ` (Category.id X)) => [[/= f ? ?] [/= g ? ?] [[/= gf ?] [/= fg ?]]]. *)
-(*  apply (Pairing f g (Isomorphisms fg gf)). *)
-(* set FG := (fun X => match Hx X in (_ = y) return Mor(F X, y) with *)
-(*                     | erefl => id *)
-(*                     end). *)
-(* set GF := (fun X => match Hx X in (_ = y) return Mor(y, F X) with *)
-(*                     | erefl => id *)
-(*                     end). *)
-(* apply: (Pairing *)
-(*           (NatType F G (@NatMixin _ _ _ _ FG _)) *)
-(*           (NatType G F (@NatMixin _ _ _ _ GF _)) _). *)
+Arguments map /.
+Lemma prf_irr C D (F : Fun (C, D)) Fi Fc Fe Fi' Fc' Fe' :
+  @alt _ _ F (fun _ _ => 'F) Fi Fc Fe == @alt _ _ F (fun _ _ => 'F) Fi' Fc' Fe'.
+Proof.
+apply: (Pairing
+        (NatType _ _ (@NatMixin _ _ _ _ _ _ (fun _ => id) (@idn_map_naturality _ _ _)))
+        (NatType _ _ (@NatMixin _ _ _ _ _ _ (fun _ => id) (@idn_map_naturality _ _ _)))).
+apply: Isomorphisms => ?; apply/symP; apply: compm0.
+Defined.
 
-(* have: Nat (alt F, alt G). *)
-(* apply: (NatType _ _ _). *)
-(* apply: (@NatMixin _ _ _ _ _ _). *)
-(* rewrite /=. *)
-(* apply: (NatType _ _ _). *)
-(* constructor. *)
-
-(* move: F G => [Fo [Fm Fi Fc Fe] ? ?] [Go [Gm Gi Gc Ge] ? ?]. *)
-
-(*           (NatType G F (@NatMixin _ _ G F R RA')) _). *)
-(* rewrite equivE /=. *)
-(* move=> [[/= L [/= LA] ?] [/= R [/= RA] ?] [/=]]. *)
-(* rewrite H. *)
-  
-Lemma altE (F G : Fun (C, D)) : alt F == alt G -> F == G.
+Lemma altE C D (F G : Fun (C, D)) :
+   @alt _ _ _ (fun _ _ => 'F) id_id pres_comp pres_equiv
+== @alt _ _ _ (fun _ _ => 'G) id_id pres_comp pres_equiv -> F == G.
 move: F G => [Fo [Fm Fi Fc Fe] ? ?] [Go [Gm Gi Gc Ge] ? ?].
 move=> [[/= L [/= LA] ?] [/= R [/= RA] ?] [/=]].
 set F := Functor.Pack (FunMixin Fi Fc Fe) _ _.
 set G := Functor.Pack (FunMixin Gi Gc Ge) _ _.
-have LA': NaturalTransformation.naturality_axiom (L : forall X : C, Mor (F X, G X)).
+have LA': NaturalTransformation.axiom (L : forall X : C, Mor (F X, G X)).
  move=> ? ? f; move: (LA _ _ f) => /= LA''.
  apply: Congruence.etrans.
   apply: subst_right; apply/symP; apply: mapmK.
  apply: Congruence.etrans; first apply LA''.
  apply: subst_left.
  apply mapmK.
-have RA': NaturalTransformation.naturality_axiom (R : forall X : C, Mor (G X, F X)).
+have RA': NaturalTransformation.axiom (R : forall X : C, Mor (G X, F X)).
  move=> ? ? f; move: (RA _ _ f) => /= RA''.
  apply: Congruence.etrans.
   apply: subst_right; apply/symP; apply: mapmK.
@@ -912,15 +911,117 @@ have RA': NaturalTransformation.naturality_axiom (R : forall X : C, Mor (G X, F 
  apply mapmK.
 move=> H1 H2.
 refine (Pairing
-          (NatType F G (@NatMixin _ _ F G L LA'))
-          (NatType G F (@NatMixin _ _ G F R RA')) _).
+          (NatType F G (@NatMixin _ _ F G _ _ L LA'))
+          (NatType G F (@NatMixin _ _ G F _ _ R RA')) _).
 apply: Isomorphisms; move=> X.
 apply: (H1 X).
 apply: (H2 X).
 Defined.
+
+Import PartialEquiv.
+
+Lemma mapE C D (F G : Fun (C, D)) :
+      forall 
+      (Ho : forall A, F A = G A)
+      (Hm : forall X Y (f : Mor (X, Y)),
+          match Ho Y in (_ = y) return Mor(G X, y) with
+          | erefl => 
+            match Ho X in (_ = y) return Mor(y, F Y) with
+            | erefl => 'F f
+            end
+          end = 'G f),
+  @alt _ _ _ (fun _ _ => 'F) id_id pres_comp pres_equiv
+  == @alt _ _ _ (fun _ _ => 'G) id_id pres_comp pres_equiv.
+move: F G => [Fo [Fm Fi Fc Fe] ? ?] [Go [Gm Gi Gc Ge] ? ?] Ho Hm.
+set FG :=
+  (fun X =>
+     match Ho X in (_ = y) return Mor(Fo X, y) with
+     | erefl => id
+     end).
+set GF :=
+  (fun X =>
+     match Ho X in (_ = y) return Mor(y, Fo X) with
+     | erefl => id
+     end).
+have FGN: NaturalTransformation.naturality_axiom
+            (fun _ => [eta app_fun_mor (alt Fi Fc Fe) (A:=_)])
+            (fun _  => [eta app_fun_mor (alt Gi Gc Ge) (A:=_)]) FG.
+ move=> A A' f; subst FG GF => /=.
+ move: Ho Hm => /= Ho Hm.
+ apply: Congruence.etrans; first (apply/symP; apply: compmA).
+ do !(apply: Congruence.etrans; last (apply/symP; apply: compmA)).
+ do !(apply: Congruence.etrans; last apply: comp0m).
+ apply: Congruence.etrans; first (apply/symP; apply: compm0).
+ apply: Congruence.etrans.
+ apply: subst_right.
+ apply: subst_left.
+ apply/symP; apply: compm0.
+ apply: Congruence.etrans.
+ apply: subst_right.
+ apply/symP; apply: comp0m.
+ apply: Congruence.etrans; last first.
+ apply: subst_right.
+ apply: comp0m.
+ rewrite -Hm /=.
+ destruct (Ho A').
+ destruct (Ho A).
+ apply: Congruence.etrans.
+ apply/symP; apply: comp0m.
+ apply: compm0.
+have GFN: NaturalTransformation.naturality_axiom
+            (fun A : C => [eta app_fun_mor (alt Gi Gc Ge) (A:=A)])
+            (fun A : C => [eta app_fun_mor (alt Fi Fc Fe) (A:=A)]) GF.
+ move=> A A' f; subst FG GF => /=.
+ move: Ho Hm FGN => /= Ho Hm FGN.
+ apply: Congruence.etrans; first (apply/symP; apply: compmA).
+ do !(apply: Congruence.etrans; last (apply/symP; apply: compmA)).
+ do !(apply: Congruence.etrans; last apply: comp0m).
+ apply: Congruence.etrans; first (apply/symP; apply: compm0).
+ apply: Congruence.etrans.
+ apply: subst_right.
+ apply: subst_left.
+ apply/symP; apply: compm0.
+ apply: Congruence.etrans.
+ apply: subst_right.
+ apply/symP; apply: comp0m.
+ apply: Congruence.etrans; last first.
+ apply: subst_right.
+ apply: comp0m.
+ rewrite -Hm /=.
+ destruct (Ho A').
+ destruct (Ho A).
+ apply: Congruence.etrans.
+ apply/symP; apply: comp0m.
+ apply: compm0.
+apply: (Pairing
+          (NatType (alt Fi Fc Fe) (alt Gi Gc Ge) (@NatMixin _ _ _ _ _ _ FG FGN))
+          (NatType (alt Gi Gc Ge) (alt Fi Fc Fe) (@NatMixin _ _ _ _ _ _ GF GFN))).
+apply: Isomorphisms => X; subst FG GF; move: Ho Hm FGN GFN => /= Ho Hm FGN GFN;
+apply/symP => /=; vm_compute; destruct (Ho X); apply: comp0m.
+Defined.
+
+Lemma funaltE C D (F G : Fun (C, D)) :
+forall 
+(Ho : forall A, F A = G A)
+(Hm : forall X Y (f : Mor (X, Y)),
+    match Ho Y in (_ = y) return Mor(G X, y) with
+    | erefl => 
+      match Ho X in (_ = y) return Mor(y, F Y) with
+      | erefl => 'F f
+      end
+    end = 'G f), F == G.
+Proof.
+move=> Ho Hm.
+apply: altE.
+by apply: mapE.
+Defined.
 End FunAlt.
-Arguments alt /.
-Arguments map /.
+
+Module Exports.
+Notation funaltE := funaltE. 
+End Exports.
+End FunAlt.
+Export FunAlt.Exports.
 
 (* universe cancel functors *)
 Module Down.
@@ -990,23 +1091,11 @@ case: C => ? [] //=; intros.
 move=> ? ? ? ?; by rewrite equivE /= Equivalence.downK.
 Defined.
 
-Lemma down_upK C : down C \compf up C = idf (Down.down C).
+Lemma down_upK C : down C \compf up C == idf (Down.down C).
 Proof.
-  rewrite Down.up_down.
-  
-  forall (map0 : forall X : Down.down C, Mor (Down.get_down (Down.get_up X), X))
-Variable C : category.
-Variable (H : down C \compf up C == idf (Down.down C)).
-Goal False.
-  case: H => /= [] [] /=.
-  rewrite equivE /=.
-  have: Nat(down C \compf up C, idf _).
-  apply (NatType _ _ (@NatMixin _ _ _ _ (fun x => id) _)).
-  apply: idn.
-  apply (Pairing (@idn (Down.down _)) _ _).
-  vm_compute.
-  apply (Pairing (@idn (Down.down C)) _ _).
-  rewrite /=.
-  intros.
-
-Coercion Category.down : category >-> category.
+  apply: (@funaltE _ _ _ _ 
+  ((fun A => Down.up_down A): forall A, (down C \compf up C) A = idf (Down.down C) A)).
+- move=> /= X Y f.
+  case: C X Y f => ? [??????????] //=.
+Defined.
+Coercion Down.down : category >-> category.
