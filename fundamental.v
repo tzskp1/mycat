@@ -7,8 +7,6 @@ Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 
-Set Printing Universes.
-
 Local Notation "f == g" := (@equiv_op _ f g).
 
 Inductive pairing@{m p} (S T : Type@{m}) (P : S -> T -> Type@{p}) : Type@{p} :=
@@ -1099,3 +1097,7 @@ Proof.
   case: C X Y f => ? [??????????] //=.
 Defined.
 Coercion Down.down : category >-> category.
+
+Lemma compfE C D E (F : Fun(C, D)) (G : Fun(D, E)) :
+  G \compf F == G \compm F.
+Proof. by apply/reflP. Defined.

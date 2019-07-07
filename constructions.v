@@ -6,7 +6,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
-Set Printing Universes.
+(* Set Printing Universes. *)
 
 Definition smush C D (A : Ob D) :=
   FunType C D (@FunMixin C D (fun _ : Ob C => A)
@@ -40,7 +40,7 @@ Local Notation "f == g" := (equiv_op f g).
 Variable C : category.
 Local Definition sp := @smush pt C.
 Local Definition Fm : forall x y, Mor (x, y) -> Mor(sp x, sp y).
-refine (fun x y (f : Mor(x, y)) => (NatType _ _ (@NatMixin _ _ (sp x) (sp y) (fun _ => f) _))).
+refine (fun x y (f : Mor(x, y)) => (NatType _ _ (@NatMixin _ _ (sp x) (sp y) _ _ (fun _ => f) _))).
 move=> ? ? ? /=.
 apply: Congruence.etrans.
 apply/symP; apply: compm0.
@@ -85,21 +85,21 @@ Definition Fsp x : Mor(F x, (smush pt (F pt)) x) :=
   end.
 
 Lemma spK : F == smush pt (F pt).
- have H1: NaturalTransformation.naturality_axiom Fsp.
+ have H1: NaturalTransformation.axiom Fsp.
   move=> [] [] [].
   apply: Congruence.etrans.
   apply/symP; apply: comp0m.
   apply: Congruence.etrans; last apply: compm0.
   by apply: id_id.
- have H2: NaturalTransformation.naturality_axiom spF.
+ have H2: NaturalTransformation.axiom spF.
   move=> [] [] [] /=.
   apply: Congruence.etrans.
   apply/symP; apply: compm0.
   apply: Congruence.etrans; last apply: compm0.
   apply/symP; apply: id_id.
 refine (Pairing
-          (NatType _ _ (@NatMixin _ _ F (smush pt (F pt)) Fsp H1))
-          (NatType _ _ (@NatMixin _ _ (smush pt (F pt)) F spF H2)) _).
+          (NatType _ _ (@NatMixin _ _ F (smush pt (F pt)) _ _ Fsp H1))
+          (NatType _ _ (@NatMixin _ _ (smush pt (F pt)) F _ _ spF H2)) _).
 constructor; case.
 + apply: Congruence.etrans; last (apply/symP; apply comp0m).
   by apply: compm_comp; apply/reflP.
@@ -107,10 +107,42 @@ constructor; case.
   by apply: compm_comp; apply/reflP.
 Defined.
 End SpK.
+
 Lemma pointE : Fun(pt, C) == C.
 apply: (Pairing (down C \compf Cpt)
                 (ptC \compf up C) _).
 apply: Isomorphisms.
+have : (ptC \compf (up C \compf down C) \compf Cpt) == (ptC \compf up C) \compm (down C \compf Cpt).
+ apply: Congruence.etrans; last apply compfE.
+ apply: compmA.
+Set Printing All.
+ 
+ apply: Congruence.etrans.
+apply: subst_left.
+ apply/symP.
+ apply: compmA.
+apply/reflP.
+
+apply: compmA.
+Print compfE.
+
+Equivalence.class (funs_obs_equivType ?M1128 ?M1130) in op) (?M1132 \compf ?M1131) (?M1132 \compm ?M1131)" with
+ "(let (op, _, _, _) := Equivalence.class (PartialEquiv.partial_equivType (Category.class cats) Fun (pt, C) Fun (pt, C)) in op) ((ptC \compf up C) \compm (down C \compf Cpt)) ?Goal0".
+
+
+Set Printing All.
+apply compmA.
+
+apply: Pairing.
+have: down C \compf up C == down C \compm up C.
+move: (down_upK C).
+apply: subst_right.
+apply: Pairing.
+apply: NaturalIsomorphisms.
+move=> X.
+rewrite equivE /=.
+move=> X.
+apply: funaltE.
 
 apply (Pairing N M).
 + apply (@NaturalIsomorphisms _ _ _ _ N M _).
