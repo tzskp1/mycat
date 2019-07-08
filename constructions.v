@@ -107,109 +107,36 @@ constructor; case.
   by apply: compm_comp; apply/reflP.
 Defined.
 End SpK.
+End Point.
 
-Lemma pointE : Fun(pt, C) == C.
-apply: (Pairing (down C \compf Cpt)
-                (ptC \compf up C) _).
+Section Point.
+Local Notation "f == g" := (equiv_op f g).
+Import PartialEquiv.
+Lemma pointE C : Fun(pt, C) == C.
+apply (Pairing (down C \compf Cpt C)
+               (ptC C \compf up C)).
 apply: Isomorphisms.
-have : (ptC \compf (up C \compf down C) \compf Cpt) == (ptC \compf up C) \compm (down C \compf Cpt).
- apply: Congruence.etrans; last apply compfE.
- apply: compmA.
-Set Printing All.
- 
- apply: Congruence.etrans.
-apply: subst_left.
- apply/symP.
- apply: compmA.
-apply/reflP.
-
-apply: compmA.
-Print compfE.
-
-Equivalence.class (funs_obs_equivType ?M1128 ?M1130) in op) (?M1132 \compf ?M1131) (?M1132 \compm ?M1131)" with
- "(let (op, _, _, _) := Equivalence.class (PartialEquiv.partial_equivType (Category.class cats) Fun (pt, C) Fun (pt, C)) in op) ((ptC \compf up C) \compm (down C \compf Cpt)) ?Goal0".
-
-
-Set Printing All.
-apply compmA.
-
-apply: Pairing.
-have: down C \compf up C == down C \compm up C.
-move: (down_upK C).
-apply: subst_right.
-apply: Pairing.
-apply: NaturalIsomorphisms.
-move=> X.
-rewrite equivE /=.
-move=> X.
-apply: funaltE.
-
-apply (Pairing N M).
-+ apply (@NaturalIsomorphisms _ _ _ _ N M _).
-  move=> ? ? ?.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  by apply: Isomorphisms; apply/symP; apply: compm0.
-apply: NaturalIsomorphisms.
-move=> F; 
-apply: Isomorphisms => [] [].
-rewrite /=.
-  rewrite equivE /=.
-case:(spK F) => f g.
-apply.
-  move=> ?.
-  
-  move: (@spK C).
-apply (@Isomorphisms _ _ (Cpt : Mor(C, Fun(pt, C) : Ob cats)) ptC ).
-apply (Pairing ptC Cpt _).
-  
-Check (Fun(pt, C) : Ob cats).
-
-
-Local Notation N' := (@NatMixin _ _ (ptC \compf Cpt) (idf _) (fun F => (@NatMixin _ _ (smush pt (F pt)) F (proj1_sig (spF F)) _)) _).
-
-  rewrite equivE /=.
-  apply: Pairing.
-
-  apply (Isomorphisms Cpt ptC).
-apply: Isomorphisms.
-  do !apply: ex_intro; last first.
-+ apply: (@NaturalIsomorphisms _ _ _ _ N' M' _).
-  move=> F [] [] [].
-  - apply: Congruence.etrans; first (apply/symP; apply compm0).
-    apply: Congruence.etrans; first apply comp0m.
-    by apply subst_left; apply/symP; apply id_id.
-  - move=> H [mo mm mi pc pe] [mo' mm' mi' pc' pe'] [n na] [] /=.
-    apply: Congruence.etrans; first (apply/symP; apply comp0m).
-    apply: Congruence.etrans; last (apply compm0).
-    apply/reflP.
-  - move=> F [] [] [].
-  - apply: Congruence.etrans; first (apply/symP; apply comp0m).
-    apply: Congruence.etrans; first apply compm0.
-    apply: compm_comp; last by apply: (proj2_sig (Fsp F)).
-    move=> /=; by apply id_id.
-  - move=> H [mo mm mi pc pe] [mo' mm' mi' pc' pe'] [n na] [] /=.
-    apply: Congruence.etrans; first (apply/symP; apply comp0m).
-    apply: Congruence.etrans; last (apply compm0).
-    apply/reflP.
-  - move=> H1 H2 H3 H4 F.
-    apply: Isomorphisms.
-     apply: Congruence.etrans; first apply H4.
-     apply: Congruence.etrans; last (apply/symP; apply comp0m).
-     apply: compm_comp; move=> []; by apply id_id.
-    suff : NatMixin H2 F \compn NatMixin H4 F == idn F => //.
-    apply: Congruence.etrans; last (apply/symP; apply comp0n).
-    move=> []; apply: compm_comp; by apply/reflP.
-+ apply: (@NaturalIsomorphisms _ _ _ _ N M _);
-  move=> ? ? ?.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  apply: Congruence.etrans; last apply: compm0.
-  by apply/symP; apply: comp0m.
-  by apply: Isomorphisms; apply/symP; apply: compm0.
-Qed.
+ set Ho :=
+ (fun (A : Fun (pt, C)) =>
+    eq_rect_r (fun p : C => sp p == A) ([eta symP] (spK A)) (Down.down_up (A pt))
+    : ((ptC C \compf up C) \compf (down C \compf Cpt C)) A == idf _ A).
+ apply (funaltE Ho); subst Ho.
+ case: C => ? []; intros; case => /=.
+ apply: Congruence.etrans; first (apply/symP; apply compm0).
+ apply: Congruence.etrans; first (apply/symP; apply comp0m).
+ apply/reflP.
+set Ho := 
+(fun A => eq_rect_r (equiv_op^~ A) reflP (Down.up_down A))
+: forall A, ((down C \compf Cpt C) \compf (ptC C \compf up C)) A == (idf _) A.
+apply (funaltE Ho); subst Ho.
+move=> X Y f.
+apply: Congruence.etrans; last first.
+apply/symP; apply comp0m.
+apply: Congruence.etrans; last first.
+apply/symP; apply compm0.
+have: (id \compm '(idf _) f) \compm id == (id \compm '(idf _) f) \compm id by apply/reflP.
+by case: C X Y f => ? [?????????????].
+Defined.
 End Point.
 
 Section Ordinal.
@@ -441,20 +368,21 @@ Notation "'Op' C" := (opposite_category C) (at level 1).
 
 Section Opposite.
 Variable C : Ob cats.
+Local Notation "f == g" := (equiv_op f g).
 Local Notation F := (FunType _ _ (@FunMixin (Op (Op C)) C _ (fun x y f => f) (fun _ => reflP) (fun _ _ _ _ _ => reflP) (fun _ _ _ _ => ssrfun.id)) : Mor(Op (Op C), C)).
 Local Notation G := (FunType _ _ (@FunMixin C (Op (Op C)) _ (fun x y f => f) (fun _ => reflP) (fun _ _ _ _ _ => reflP) (fun _ _ _ _ => ssrfun.id)) : Mor(C, Op (Op C))).
-Local Notation N := (NatType _ _ (@NatMixin _ _ (G \compf F) (idf Op (Op C)) (fun X : Ob (Op (Op C)) => id : Mor ((G \compf F) X, (idf Op (Op C)) X)) (idn_map_naturality _))).
-Local Notation M := (NatType _ _ (@NatMixin _ _ (idf Op (Op C)) (G \compf F) (fun X : Ob C => id : Mor ((idf Op (Op C)) X, (G \compf F) X)) (idn_map_naturality _))).
-Local Notation N' := (NatType _ _ (@NatMixin  _ _ (F \compf G) (idf C) (fun X : Ob C => id : Mor ((F \compf G) X, (idf C) X)) (idn_map_naturality _))).
-Local Notation M' := (NatType _ _ (@NatMixin _ _ (idf C) (F \compf G) (fun X : Ob (Op (Op C)) => id : Mor ((idf C) X, (F \compf G) X)) (idn_map_naturality _))).
-Lemma dualK : @equiv_op (obs_equivType cats) (Op (Op C)) C.
-apply: (Pairing F G _);
-constructor;
-[ apply: (Pairing N M)
-| apply: (Pairing N' M') ];
-constructor => X; constructor;
-(apply: Congruence.etrans; first by (apply/symP; apply: comp0m)); by apply/reflP.
-Qed.
+Local Lemma HoFG : forall A, (F \compf G) A == idf _ A.
+Proof. move=> X. apply/reflP. Defined.
+
+Local Lemma HoGF : forall A, (G \compf F) A == idf _ A.
+Proof. move=> X. apply/reflP. Defined.
+
+Lemma dualK : Op (Op C) == C.
+apply: (Pairing F G _); constructor; [apply (funaltE HoGF) | apply (funaltE HoFG) ] => X Y f;
+(apply: Congruence.etrans; first (apply/symP; apply: compm0));
+(apply: Congruence.etrans; first (apply/symP; apply: comp0m));
+apply/reflP.
+Defined.
 End Opposite.
 Section Opposite.
 Variables C D : category.
@@ -585,7 +513,6 @@ End Product.
 Notation "a * b" := (prod_catType a b).
 Arguments pfst / {_ _}.
 Arguments psnd / {_ _}.
-
 
 Section Curry.
 Local Notation "f == g" := (equiv_op f g).

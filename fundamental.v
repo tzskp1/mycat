@@ -873,28 +873,13 @@ Defined.
 Import PartialEquiv.
 
 Lemma mapE C D (F G : Fun (C, D)) :
-      forall 
-      (Ho : forall A, F A = G A)
-      (Hm : forall X Y (f : Mor (X, Y)),
-          match Ho Y in (_ = y) return Mor(G X, y) with
-          | erefl => 
-            match Ho X in (_ = y) return Mor(y, F Y) with
-            | erefl => 'F f
-            end
-          end = 'G f),
+forall (Ho : forall A, F A == G A)
+       (Hm : forall X Y (f : Mor (X, Y)), (Ho Y).1 \compm 'F f \compm (Ho X).2 == 'G f),
   @alt _ _ _ (fun _ _ => 'F) id_id pres_comp pres_equiv
   == @alt _ _ _ (fun _ _ => 'G) id_id pres_comp pres_equiv.
 move: F G => [Fo [Fm Fi Fc Fe] ? ?] [Go [Gm Gi Gc Ge] ? ?] Ho Hm.
-set FG :=
-  (fun X =>
-     match Ho X in (_ = y) return Mor(Fo X, y) with
-     | erefl => id
-     end).
-set GF :=
-  (fun X =>
-     match Ho X in (_ = y) return Mor(y, Fo X) with
-     | erefl => id
-     end).
+set FG := (fun X => (Ho X).1).
+set GF := (fun X => (Ho X).2).
 have FGN: NaturalTransformation.naturality_axiom
             (fun _ => [eta app_fun_mor (alt Fi Fc Fe) (A:=_)])
             (fun _  => [eta app_fun_mor (alt Gi Gc Ge) (A:=_)]) FG.
@@ -914,11 +899,15 @@ have FGN: NaturalTransformation.naturality_axiom
  apply: Congruence.etrans; last first.
  apply: subst_right.
  apply: comp0m.
- rewrite -Hm /=.
- destruct (Ho A').
- destruct (Ho A).
- apply: Congruence.etrans.
- apply/symP; apply: comp0m.
+ apply: Congruence.etrans; last first.
+ apply: subst_left.
+ apply: Hm.
+ apply: Congruence.etrans; last first.
+ apply/symP; apply: compmA.
+ apply: Congruence.etrans; last first.
+ apply: subst_right.
+ case: (Ho A) => L R [H ?].
+ apply/symP; apply: H.
  apply: compm0.
 have GFN: NaturalTransformation.naturality_axiom
             (fun A : C => [eta app_fun_mor (alt Gi Gc Ge) (A:=A)])
@@ -939,29 +928,28 @@ have GFN: NaturalTransformation.naturality_axiom
  apply: Congruence.etrans; last first.
  apply: subst_right.
  apply: comp0m.
- rewrite -Hm /=.
- destruct (Ho A').
- destruct (Ho A).
  apply: Congruence.etrans.
- apply/symP; apply: comp0m.
- apply: compm0.
+ apply: subst_right.
+ apply/symP; apply: Hm.
+ do !(apply: Congruence.etrans; first (apply/symP; apply: compmA)).
+ apply: Congruence.etrans.
+ apply: subst_left; apply/symP; apply: compmA.
+ apply: Congruence.etrans.
+ do 2!apply: subst_left.
+ case: (Ho A') => L R [H ?]; apply: H.
+ apply: Congruence.etrans; first apply: compmA.
+ apply/symP; apply comp0m.
 apply: (Pairing
           (NatType (alt Fi Fc Fe) (alt Gi Gc Ge) (@NatMixin _ _ _ _ _ _ FG FGN))
           (NatType (alt Gi Gc Ge) (alt Fi Fc Fe) (@NatMixin _ _ _ _ _ _ GF GFN))).
 apply: Isomorphisms => X; subst FG GF; move: Ho Hm FGN GFN => /= Ho Hm FGN GFN;
-apply/symP => /=; vm_compute; destruct (Ho X); apply: comp0m.
+compute; case: (Ho X) => L R [H H']; [exact H | exact H'].
 Defined.
 
 Lemma funaltE C D (F G : Fun (C, D)) :
-forall 
-(Ho : forall A, F A = G A)
-(Hm : forall X Y (f : Mor (X, Y)),
-    match Ho Y in (_ = y) return Mor(G X, y) with
-    | erefl => 
-      match Ho X in (_ = y) return Mor(y, F Y) with
-      | erefl => 'F f
-      end
-    end = 'G f), F == G.
+forall (Ho : forall A, F A == G A)
+       (Hm : forall X Y (f : Mor (X, Y)), (Ho Y).1 \compm 'F f \compm (Ho X).2 == 'G f),
+  F == G.
 Proof.
 move=> Ho Hm.
 apply: altE.
@@ -970,6 +958,7 @@ Defined.
 End FunAlt.
 
 Module Exports.
+Arguments funaltE {C D F G} Ho Hm.
 Notation funaltE := funaltE. 
 End Exports.
 End FunAlt.
@@ -1024,6 +1013,8 @@ case: C a b f => ? [] //=.
 Defined.
 Lemma up_down C (X : Ob (Down.down C)) : Down.get_down (Down.get_up X) = X.
 by case: C X => ? [] /=. Defined.
+Lemma down_up C (X : Ob C) : Down.get_up (Down.get_down X) = X.
+by case: C X => ? [] /=. Defined.
 End Down.
 End Down.
 
@@ -1045,10 +1036,15 @@ Defined.
 
 Lemma down_upK C : down C \compf up C == idf (Down.down C).
 Proof.
-  apply: (@funaltE _ _ _ _ 
-  ((fun A => Down.up_down A): forall A, (down C \compf up C) A = idf (Down.down C) A)).
-- move=> /= X Y f.
-  case: C X Y f => ? [??????????] //=.
+set Ho :=
+  fun (A : Down.down C) =>
+    Congruence.suff_eq (Down.up_down A) : (down C \compf up C) A == idf _ A.
+apply: (funaltE Ho).
+subst Ho;
+case: C => ? [??????????] X Y f.
+apply: Congruence.etrans.
+apply/symP; apply: compm0.
+apply/symP; apply: comp0m.
 Defined.
 Coercion Down.down : category >-> category.
 
