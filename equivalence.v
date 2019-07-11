@@ -223,8 +223,8 @@ Lemma congr1 f f' :
 Proof. move => ?. apply: comp_op' => //; apply reflP. Qed. 
 (* TODO: somthing *)
 End Compatibility.
-Arguments compatible {e1 e2 e3} _.
-Arguments etrans {e x y z} _ _.
-Arguments subst_right {e1 e2 e3 F} comp_op {_ _ _}.
-Arguments subst_left {e1 e2 e3 F} comp_op {_ _ _}.
 End Congruence.
+Arguments Congruence.compatible {e1 e2 e3} _.
+Arguments Congruence.etrans {e x y z} _ _ /.
+Arguments Congruence.subst_right {e1 e2 e3 F} comp_op {_ _ _}.
+Arguments Congruence.subst_left {e1 e2 e3 F} comp_op {_ _ _}.
