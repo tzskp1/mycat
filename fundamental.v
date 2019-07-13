@@ -1632,11 +1632,44 @@ Proof.
 apply: Isomorphisms => X.
 apply: Congruence.etrans.
 apply: adj_counitE.
+move: adj_counitE.
 rewrite /adj_unit /domLS2 /domRS2 /domLS1 /domRS1 /=.
 case: adj adj2C => [] L R [] H [] bH11 bH12 bH1H [] bH21 bH22 bH2H.
-apply: (isomKL (isom_sym H)).
+do !(apply: Congruence.etrans; first apply: compmA).
+apply: isomKL.
+apply: Isomorphisms.
+case: bH2H => H1 H2.
+set T := , _.
+apply (H2 T).
+case: bH2H => H1 H2.
+apply H1.
+apply: isomKR.
+apply: pres_isom.
+apply: Isomorphisms.
+case: bH2H => H1 H2.
+set T := , _.
+apply (H1 T).
+case: bH2H => H1 H2.
+set T := , _.
+by case: (H2 T).
+
+rewrite /=.
 apply: Congruence.etrans.
-apply: compmA.
+apply/symP; apply: pres_comp.
+apply: Congruence.etrans.
+apply: pres_equiv.
+case: bH21 bH2H=> /=.
+case: bH2H => H1 H2.
+apply: (H1 _).
+
+do !(apply: Congruence.etrans; first apply: compmA).
+
+case: bH2H.
+apply bH2H.
+apply: (isomKL bH2H).
+rewrite /=.
+apply: (isomKL ( bH2H)).
+apply: (isomKL (isom_sym bH2H)).
 apply: Congruence.etrans; last first.
 
 Check ((domRS2 (@CommaOb _ _ _ (idf _) G _ _ (Category.id (G (F X))))).1
