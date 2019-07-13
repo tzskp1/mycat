@@ -195,6 +195,26 @@ Proof. by []. Qed.
 Definition trivial_equivMixin := EquivMixin trivial_symP trivial_transP trivial_reflP.
 End TrivialEquiv.
 
+Section Option.
+Variables T : Type.
+Variable e : Equivalence.mixin_of T.
+Definition opt_op (p : option T) (q : option T) :=
+  match p, q with
+  | None, None => True
+  | _, None | None, _ => False
+  | Some p', Some q' =>
+    @equiv_op (EquivType _ e) p' q'
+  end.
+Lemma opt_symP : Equivalence.symmetricity opt_op.
+Proof. move=> [?|//] [?|//]. apply/symP. Qed.
+Lemma opt_transP : Equivalence.transitivity opt_op.
+Proof. move=> [?|//] [?|//] [?|//] //; apply/transP. Defined.
+Lemma opt_reflP : Equivalence.reflexivity opt_op.
+Proof. move=> []// ?; apply/reflP. Qed.
+Definition opt_equivMixin := EquivMixin opt_symP opt_transP opt_reflP.
+Definition opt_equivType := Eval hnf in EquivType (option T) opt_equivMixin.
+End Option.
+
 Module Congruence.
 Lemma etrans (e : equivType) (x y z : e) : x == y -> y == z -> x == z.
 Proof. by move=> ?; apply/transP. Defined.

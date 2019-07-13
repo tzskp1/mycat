@@ -8,6 +8,78 @@ Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
 (* Set Printing Universes. *)
 
+(* Section Map. *)
+(* Variable C : category. *)
+(* Structure map_ob := *)
+(*   MapOb { *)
+(*     total_dom : Ob C; *)
+(*     total_cod : Ob C; *)
+(*     total_mor :> Mor (total_dom, total_cod) *)
+(*   }. *)
+(* Local Notation td := total_dom. *)
+(* Local Notation tc := total_cod. *)
+(* Local Notation tm := total_mor. *)
+(* Import PartialEquiv. *)
+(* Definition map_mor f g := *)
+(*   @pairing Mor(td f, td g) Mor(tc f, tc g) *)
+(*            (fun d c => c \compm tm f == tm g \compm d). *)
+
+(* Definition mapc_equivMixin f g := *)
+(*   let S := @partial_equivType (Ob C) (Category.class C) (td f) (td g) in *)
+(*   let T := @partial_equivType (Ob C) (Category.class C) (tc f) (tc g) in *)
+(*   @pairing_equivMixin S T. *)
+
+(* Definition map_comp f g h (j : map_mor g h) (i : map_mor f g) : map_mor f h. *)
+(*   apply (Pairing (j.1 \compm i.1) (j.2 \compm i.2)). *)
+(*   case: i => i1 i2 fg. *)
+(*   case: j => j1 j2 gh. *)
+(*   apply: Congruence.etrans; first apply: compmA. *)
+(*   apply: Congruence.etrans; first (apply: subst_right; apply fg). *)
+(*   apply: Congruence.etrans; first (apply/symP; apply: compmA). *)
+(*   apply: Congruence.etrans; first (apply: subst_left; apply gh). *)
+(*   apply: Congruence.etrans; first apply: compmA. *)
+(*   apply/reflP. *)
+(* Defined. *)
+
+(* Definition map_id f : map_mor f f. *)
+(*   apply (Pairing id id). *)
+(*   apply: Congruence.etrans; last apply: compm0. *)
+(*   apply/symP; apply: comp0m. *)
+(* Defined. *)
+(* Lemma map_compmA : @Category.associativity_of_morphisms _ _ map_comp (fun a b => @mapc_equivMixin a b _). *)
+(* Proof. *)
+(* move => /= f g h i [j1 j2 jH] [k1 k2 kH] [l1 l2 lH]. *)
+(* by apply: pair; apply: compmA. *)
+(* Defined. *)
+(* Lemma map_compm0 : @Category.identity_morphism_is_right_identity _ _ map_id map_comp (fun a b => @mapc_equivMixin a b _). *)
+(* Proof. *)
+(* move => /= f g h. *)
+(* by apply: pair; apply: compm0. *)
+(* Defined. *)
+(* Lemma map_comp0m : @Category.identity_morphism_is_left_identity _ _ map_id map_comp (fun a b => @mapc_equivMixin a b _). *)
+(* Proof. *)
+(* move => /= f g h. *)
+(* by apply: pair; apply: comp0m. *)
+(* Defined. *)
+(* Lemma map_comp_left : @Category.compatibility_left _ _ map_comp (fun a b => @mapc_equivMixin a b _). *)
+(* Proof. *)
+(* move => ? ? ? [f1 f2 Hf] [f'1 f'2 Hf'] [g1 g2 Hg] [ff'1 ff'2]. *)
+(* by apply: pair; apply: comp_left. *)
+(* Defined. *)
+(* Lemma map_comp_right : @Category.compatibility_right _ _ map_comp (fun a b => @mapc_equivMixin a b _). *)
+(* Proof. *)
+(* move => ? ? ? [f1 f2 Hf] [f'1 f'2 Hf'] [g1 g2 Hg] [ff'1 ff'2]. *)
+(* by apply: pair; apply: comp_right. *)
+(* Defined. *)
+(* Canonical map_catMixin := Eval hnf in CatMixin map_compmA map_compm0 map_comp0m map_comp_left map_comp_right. *)
+(* Canonical map_catType := Eval hnf in CatType map_ob map_catMixin. *)
+(* End Map. *)
+(* Notation Map := map_catType. *)
+(* Notation "` f" := (MapOb f : Map _) (at level 1). *)
+(* Notation dom := total_dom. *)
+(* Notation cod := total_cod. *)
+
+
 Definition smush C D (A : Ob D) :=
   FunType C D (@FunMixin C D (fun _ : Ob C => A)
                          (fun _ _ _ => id)
@@ -514,144 +586,6 @@ Notation "a * b" := (prod_catType a b).
 Arguments pfst / {_ _}.
 Arguments psnd / {_ _}.
 
-Section Curry.
-Local Notation "f == g" := (equiv_op f g).
-Variable C D E : category.
-Section CurryOb.
-Variable x : Fun(C * D, E).
-Section CurryObOb.
-Variable c : Ob C.
-Definition curry_obob : Fun (D, E).
-set F := (fun d1 d2 (f : Mor(d1, d2))
-          => 'x ((id, f) : Mor((c, d1), (c, d2)))).
-apply: (@FunMixin _ _ _ F _ _ _).
-move=> ?; apply: id_id.
-move=> ? ? ? f g.
-apply: Congruence.etrans; last apply: pres_comp.
-apply: pres_equiv.
-apply: Congruence.subst_left.
-by move=> ? ? ? ? H1 H2; split.
-apply: compm0.
-move=> ? ? ? ? H.
-apply: pres_equiv.
-by split => //; apply/reflP.
-Defined.
-End CurryObOb.
-Section CurryObMor.
-Definition curry_obmor c1 c2 (f : Mor(c1, c2)) : Nat(curry_obob c1, curry_obob c2).
-set N := (fun d => 'x ((f, id) : Mor((c1, d), (c2, d)))
-                   : Mor (curry_obob c1 d, curry_obob c2 d)).
-apply (@NatMixin _ _ _ _ N).
-move=> ? ? g.
-apply: Congruence.etrans => /=.
-apply/symP; apply pres_comp.
-apply: Congruence.etrans; last apply pres_comp.
-apply: pres_equiv; split.
- apply: Congruence.etrans; last apply: comp0m.
- apply/symP; apply: compm0.
-apply: Congruence.etrans; last apply: compm0.
-apply/symP; apply: comp0m.
-Defined.
-End CurryObMor.
-Definition curry_ob : Fun(C, Fun (D, E)).
-apply (@FunMixin _ _ curry_obob curry_obmor).
-+ move=> ? ?; by apply: Congruence.etrans; first apply: id_id; apply/reflP.
-+ move=> ? ? ? ? ? ?.
-  apply: Congruence.etrans; last apply: pres_comp.
-  apply: pres_equiv; split; first by apply/reflP.
-  by apply: Congruence.etrans; last apply: compm0; apply/reflP.
-+ move=> ? ? ? ? ? ?.
-  by apply: pres_equiv; split; last by apply/reflP.
-Defined.
-End CurryOb.
-Section CurryMor.
-Variables x y : Fun(C * D, E).
-Variable f : Mor(x, y).
-Section CurryMorMor.
-Variable c : Ob C.
-Definition curry_mormor : Nat((curry_ob x) c, (curry_ob y) c).
-apply (@NatMixin _ _ _ _ (fun d => f (c, d) : Mor(curry_ob x c d, curry_ob y c d))).
-by move=> ? ? ? /=; apply: naturality.
-Defined.
-End CurryMorMor.
-Definition curry_mor : Nat(curry_ob x, curry_ob y).
-apply (@NatMixin _ _ (curry_ob x) (curry_ob y) curry_mormor).
-by move=> ? ? ? ? /=; apply: naturality.
-Defined.
-End CurryMor.
-Definition curry : Fun(Fun(C * D, E), Fun(C, Fun (D, E))).
-apply (@FunMixin _ _ curry_ob curry_mor).
-by move=> ? ? ?; apply/reflP.
-by move=> ? ? ? ? ? ? ?; apply/reflP.
-move=> ? ? ? ? H c d; exact (H (c, d)).
-Defined.
-
-Section UnCurryOb.
-Variable x : Fun(C, Fun(D, E)).
-Definition uncurry_obob cd : Ob E := x cd.1 cd.2.
-Definition uncurry_obmor cd1 cd2 (f : Mor(cd1, cd2)) := ('(x cd2.1) f.2) \compm (('x f.1) cd1.2).
-Definition uncurry_ob : Fun(C * D, E).
-apply (@FunMixin _ _ uncurry_obob uncurry_obmor).
-+ move=> [] a b.
-  apply: Congruence.etrans; last (apply/symP; apply: compm0).
-  apply: compm_comp; first by apply id_id.
-  have: ('x id) == id by move=> ?; apply id_id. apply.
-+ move=> [??] [??] [??] [f1 f2] [g1 g2].
-  apply: Congruence.etrans; last first.
-  apply: compm_comp; apply naturality.
-  apply: Congruence.etrans; last (apply/symP; apply: compmA).
-  apply: Congruence.etrans; last first.
-  apply: subst_right.
-  apply: compmA.
-  apply: Congruence.etrans; last first.
-  apply: subst_right.
-  apply: subst_left.
-  apply: naturality.
-  apply: Congruence.etrans; last first.
-  apply: subst_right.
-  apply/symP; apply: compmA.
-  apply: Congruence.etrans; last apply: compmA.
-  apply: Congruence.etrans.
-  apply/symP; apply: naturality.
-  apply: compm_comp; last first.
-  apply: pres_comp.
-  have : (' x (g1 \compm f1) == (' x g1) \compn (' x f1))
-   by (apply: Congruence.etrans; last apply: pres_comp); apply/reflP.
-  apply.
-+ move=> [??] [??] [f ?] [g ?] [??].
-  apply: compm_comp; first by apply: pres_equiv.
-  have : 'x f == 'x g by apply pres_equiv.
-  apply.
-Defined.
-End UnCurryOb.
-Section UnCurryMor.
-Variables x y : Fun(C, Fun(D, E)).
-Variable f : Mor(x, y).
-Definition uncurry_mormor cd : Mor(uncurry_ob x cd, uncurry_ob y cd) := f cd.1 cd.2.
-Definition uncurry_mor : Nat(uncurry_ob x, uncurry_ob y).
-apply (@NatMixin _ _ (uncurry_ob x) (uncurry_ob y) uncurry_mormor).
-move=> [??] [??] [g h].
-apply: Congruence.etrans; first (apply/symP; apply: compmA).
-apply: Congruence.etrans; first (apply: subst_left; apply: naturality).
-apply: Congruence.etrans; last (apply: subst_left; apply: naturality).
-apply: Congruence.etrans; last (apply: subst_left; apply/symP; apply: naturality).
-apply: Congruence.etrans; first apply: compmA.
-apply: Congruence.etrans; last (apply/symP; apply: compmA).
-apply: subst_right.
-have: f _ \compm 'x g == 'y g \compm f _ by apply naturality.
-apply.
-Defined.
-End UnCurryMor.
-Definition uncurry : Fun(Fun(C, Fun (D, E)), Fun(C * D, E)).
-apply (@FunMixin _ _ uncurry_ob uncurry_mor).
-+ move=> ? ?; apply/reflP.
-+ move=> ? ? ? ? ? ?; apply/reflP.
-+ move=> ? ? ? ? H c; exact (H c.1 c.2).
-Defined.
-End Curry.
-
-(* Lemma curryK C D E :@isomorphisms cats _ _ (curry C D E) (uncurry C D E). *)
-
 Definition final_object C :=
   limit (canonical_embedding0 C).
 Definition kernel C (A B : Ob C) (f : Mor(A, B)) :=
@@ -687,283 +621,152 @@ Canonical types_catType := Eval hnf in CatType Type types_catMixin.
 End Types.
 Notation types := types_catType.
 
-Section Hom.
-Variables C : category.
-Definition hom_ob (p : Ob ((Op C) * C)) := Mor(pfst p, psnd p) : Ob types.
-Definition hom_mor (p q : Ob (C * (Op C))) (f : Mor (p, q)) : Mor (hom_ob p, hom_ob q)
-  := fun g => ('pfst f) \compm g \compm ('psnd f).
-Axiom hom_id_id : Functor.maps_identity_to_identity hom_mor.
-Axiom hom_pres_comp : Functor.preserve_composition hom_mor.
-Axiom hom_pres_equiv : Functor.preserve_equivalence hom_mor.
-Definition hom := FunMixin hom_id_id hom_pres_comp hom_pres_equiv.
-Canonical hom_funType := Eval hnf in FunType _ _ hom.
-End Hom.
-
-Section Perm.
-Variables C D : category.
-Definition perm_ob (cd : Ob C * Ob D) := (cd.2, cd.1).
-Definition perm : Fun(C * D, D * C).
-apply (@FunMixin _ _ perm_ob (fun cd cd' (f : Mor(cd, cd')) => (f.2, f.1))).
-move=> ?.
-apply/reflP.
-move=> ? ? ? ? ?.
-apply/reflP.
-by move=> ? ? ? ? [] ? ?; split.
-Defined.
-End Perm.
-(* Section Perm. *)
-(* Lemma permK C D : @isomorphisms cats (C * D) (D * C) (@perm C D) (@perm D C). *)
-(* End Perm. *)
-
-Module Adjunction.
-Section Axioms.
-Variables C D : category.
-Variable F : Fun (C, D).
-Variable G : Fun (D, C).
-Local Notation Hom H := (uncurry _ _ _ (curry _ _ _ (hom _) \compf H)).
-Check curry.
-Check uncurry.
-Check (Hom F).
-Check 'Op (Hom G).
-
-     Fun (D * Op C, types)
-     Fun (C * Op D, types)
-Check (curry _ _ _ (hom _) \compf G).
-(* Check ((curry _ _ _ (hom _ \compf perm _ _))). *)
-Check (uncurry _ _ _  \compf perm _ _).
-Check (uncurry _ _ _ (curry _ _ _ (hom _) \compf G) \compf perm _ _).
-Check (curry _ _ _ (hom _)).
-Check (Hom G \compf perm _ _).
-Check uncurry.
-Check (curry _ _ _ (hom _)).
-Check (uncurry _ _ _ (curry _ _ _ (hom _))).
-Check (uncurry _ _ _ (hom _)).
-Check (curry _ _ _ (uncurry _ _ _ (hom _) \compf G)).
-Local Notation Hom' H := 
-Check Nat(Hom F, Hom G).
-Check (forall X Y, Mor(F X, Y)).
-Variable n : forall X Y, Mor (F X, Y) -> Mor (X, G Y).
-
-Local Definition adjunction_axiom X Y :=
-  { m : Mor (X, G Y) -> Mor (F X, Y) |
-    comp (@n X Y) m = ssrfun.id /\ comp m (@n X Y) = ssrfun.id }.
-Arguments adjunction_axiom /.
-Lemma injectivity X Y :
-  adjunction_axiom X Y ->
-  injective (fun g (x : Mor (F X, Y)) => @n X Y (g x))
-  /\ injective (fun g x => g (@n X Y x) : Mor (X,G Y)).
-Proof.
-case=> m [] HL HR. split => x y H'.
- + suff: ssrfun.id \o x = ssrfun.id \o y => //.
-   by rewrite -HR; apply (f_equal m# H').
- + suff: x \o ssrfun.id = y \o ssrfun.id => //.
-    by rewrite -HL; apply (f_equal (#m) H').
-Qed.
-End Axioms.
-Module Exports.
-Structure adjunction C D :=
-  Adjunction
-    {
-      left_adj : _;
-      right_adj : _;
-      adj_map : _;
-      adj_axiom : forall X Y, @adjunction_axiom C D left_adj right_adj adj_map X Y;
-    }.
-Coercion triple_of_adjunction C D (a : adjunction C D) := (left_adj a, right_adj a, @adj_map C D a).
-Variables C D I : category.
-Variable a : adjunction C D.
-Variable d : Fun(I, C).
-Variable limd : limit d.
-Variable lima : limit (a.1.1 \compf d).
-Arguments compfm /.
-Arguments compfo /.
-(* Arguments compm /. *)
-Lemma adjKL :
-  (a.1.1 \compf a.1.2 \compf a.1.1 : Ob (Fun(C, D))) == a.1.1.
-Proof.
-case: a => F G n aa /=.
-set N := @NatMixin _ _ F (F \compf G \compf F) (fun X => 'F (@n X (F X) id)).
-set M := @NatMixin _ _ (F \compf G \compf F) F (fun X => (proj1_sig (aa (G (F X)) (F X)) id)).
-rewrite equivE /=.
-apply: ex_intro.
-apply: ex_intro.
-do !apply: ex_intro.
-apply: (@NaturalIsomorphisms _ _ _ _ (M _) (N _)).
-apply (ex_intro )).
-apply: 
-apply: Isomorphisms.
-move=> X X' f.
-case: (aa (G (F X)) (F X)) => fX [] Xl Xr.
-case: (aa (G (F X')) (F X')) => fX' [] X'l X'r /=.
-
-have: 'F (@n X' (F X') id) \compm fX' id = 'F (@n _ _ (fX' id)).
-case: (aa (G (F X')) (F (G (F X')))) => fX'' [] X''l X''r.
-
-have H: n (G (F X')) (F (G (F X'))) (' F (n X' (F X') id) \compm fX' id) = n (G (F X')) (F (G (F X'))) (' F (n (G (F X')) (F X') (fX' id))).
-
-move: (f_equal (fun e => e 
-               ) X'r) => <-.
-                                                                  
-       (fun _ : Mor (F (G (F X')), F (G (F X'))) => ' F
-case: (injectivity (aa (G (F X')) (F (G (F X'))))) => ml mr.
-move: (ml (fun _ => ' F (n X' (F X') id) \compm fX' id) (fun _ =>  ' F (n (G (F X')) (F X') (fX' id)))) => ML.
-apply: mr.
-About injectivity.
-case: (aa (G (F X')) (F (G (F X')))) => m /= [] ml mr.
-congr ('F).
-      hhid.
-Check 
-
-Check (aa (G (F X')) (F (G (F X'))
-     : Mor (F (G (F X')), F (G (F X')))
-
-move: (f_equal (fun e => e (fX' id)) X'r) => <-.
-Check ('G (' F (n X' (F X') id))).
-                           (fX' id \compm ' F (' G (' F f)))) X''r) => /=.
-Check .
-case: (aa (G (F X)) (F X')) => fX'' [] X''l X''r.
-have: fX' id \compm ' F (' G (' F f)) = fX'' ('G ('F f)).
-move: (f_equal (fun e => 'F (e (' G (' F f)))) X''l) => <- /=.
-set A := fX'' (' G (' F f)).
-Check (fX' id).
-F X', F (G (F X'))
-move: (f_equal (fun e => e (fX' id \compm ' F (' G (' F f)))) X''r) => /=.
-Check (' F (n (G (F X)) (F X') (fX'' ('G ('F f))))).
-                           (fX' id \compm ' F (' G (' F f)))) X''r) => <-.hh
-Check (fX'' (' G (' F f))).
-congr fX''.
-
-have: n (G (F X)) (F X') (fX' id \compm ' F (' G (' F f))) = ' G (' F f).
-
-move: (f_equal (fun e => e (fX' id \compm ' F (' G (' F f)))) X''r) => <- /=.
-(fX' id \compm ' F (' G (' F f)))
-                           (' G (' F f))) X''r) => /=.
-move: (f_equal (fun e => e ('G ('F f))) X''l) => <- /=.
-
-      @n (G (F X)) (F X') (' F f \compm fX id).
-Check (@n (G (F X)) (F X') (fX' id \compm ' F (' G (' F f)))).
-
-Check 
-move: (f_equal (fun e => e (fX' id \compm ' F (' G (' F f)))) X''r) => /=.
-      ).
-
-     : Mor 
-  Check 
-Check (fX id \compm ' F (' G (' F id))) == fX id.
-apply: Congruence.suff_eq.
-Check ('F ('G ('F id))).
-Check (fX id).
-
-move: (f_equal (fun e => e id) Xl) => <- /=.
-
-Check (fX (n (G (F X)) (F X) (fX id))).
-case: (aa X (F X')) => ?.
-         (G (F X)) (F X)) => fX [] Xl Xr.
-case: (injectivity (aa (G (F X)) (F X))) => Il Ir.
-move: (f_equal (fun e => e (fX' id)) X'r) => <- /=.
-apply: Ir.
-Check (fX' id \compm ' F (' G (' F f))).
-rewrite !/comp.
-Check (' F (' G (' F f))).
-Check (f_equal _ X'r).
-have: n (G (F X')) (F X') (fX' id) = id.
-rewrite -X'l.
-move: X'l X'r => /=.
-move:(equal_f X'r).
-rewrite /compm.
-rewrite /compfm.
-apply: Isomorphisms.
-move: (H' X) => /=.
-move: (H X) => /=.
-move=> X Y f.
-case: (aa X (F Y))=> m [] /= mL mR.
-
-Print NaturalTransformation.
-                            (fun X => (@Isomorphisms _ _ _  (@n X (F X) id) _ _ _))).
-  Check (@NaturalTransformation _ _ F (F \compf G \compf F) (fun X => 'F (@n X (F X) id)) _).
-                                                                m(fun X => (@n X (F X) id)) _.
-  N
-Print ex.
-Check(fun X =>
-| ex_intro m _ => @Isomorphisms _ _ _ _ (m id)
-end).
-case:  => m [] mL mR.
-Check (NaturalIsomorphisms (fun X => (@Isomorphisms _ _ _  (@n X (F X) id) _ _ _))).
-apply (fun @Isomorphisms _ _ _ _ ((fun X => (m id)) X)).
-(forall X : C, isomorphisms (N X) (M X))
-Print Isomorphism.NaturalIsomorphisms.
-About NaturalIsomorphisms .
-apply: NaturalIsomorphisms => X.
-Check ((fun X => (m id)) X).
-move: (m id).
-apply: Isomorphisms.
-apply: Congruence.suff_eq.
-apply: mL.
-Check ('F (@n X (F X) id)).
-Check ('F (@n X (F X) id)).
-apply (@Isomorphisms _ _ _ (fst (_, ('F (@n X (F X) id))))
-                     (snd ('F (@n X (F X) id), _))) => /=.
-rewrite /=.
-move: (fun X => (@n (G X) (F (G X)) id)).
-Check ).
-                   (G X) (F (G X)) id)).
-Check (fun X => (@n (G (F X)) (F X))).
-Check (fun X => (@n (G (F X)) (F X) (@Category.id _ _ (G (F X))))).
-                   (F X) (G (F X)) id)).
-case: (aa X (F X))=> Hf1 Hf2.
-case: (aa (G (F X)) (F X)) => Hgf1 Hgf2.
-move: (Hgf1 (@n X
-         ssrfun.id ssrfun.id).
-move: (fun X => 'F (@n (G X) (F (G X)) id)).
-Check (fun f => 'G f).
-Check 'G.
-move: (fun X => 
-                            (@n (G X) X f))).
-                    (F (G X)) id)).
-  move=> X.
-  mov
-move: (n Ld (F Ld) id).
-      pres_limit :
-  a.1.1 limd == limit_object lima.
-Lemma adj_pres_limit :
-  a.1.1 limd == limit_object lima.
-Proof.
-case: limd => /= Ld cd ud uda.
-case: lima => /= La ca ua uaa.
-case: a cd ud uda ca ua uaa => F G n aa /= cd ud uda ca ua uaa.
-move: uda => /=.
-rewrite /Limit.universality_axiom.
-have: F Ld 
-  Ld = solution_of_diagram
-case: (aa Ld (F Ld)) => /= Ha1 Ha2.
-Check (G (F Ld)).
-move: (Ha1 ssrfun.id (fun _ => id)) => /=.
-move: (n Ld (F Ld) id).
-rewrite /adjunction_axiom.
-move: cd 
-
-Print limit_is_the_unique.
-apply: limit_is_the_unique.
-Check (limit_object (limit d)).
-  
-  
-End Exports.
-End Adjunction.
-Export Adjunction.Exports.
-
-(* Example pair (C D : category) : category. *)
-
-
-(* refine (@Category (Ob C * Ob D) *)
-(*                   (fun (A B : Ob C * Ob D) => (Mor (fst A, fst B) * Mor (snd A, snd B))) *)
-(*                   (fun A B => (@equivMixin C (fst A) (fst B), @equivMixin D (snd A) (snd B))) *)
-(*                   (fun A B C => (@comp C (fst A) (fst B) (fst C), @comp D (snd A) (snd B) (snd C))) *)
-(*                   _ _ _ _ _ _). *)
-(* intros; by apply: associativity_of_morphisms. *)
-(* intros; by apply: identity_morphism_is_right_identity. *)
-(* intros; by apply: identity_morphism_is_left_identity. *)
-(* intros; by apply: compatibility_left. *)
-(* intros; by apply: compatibility_right. *)
+(* Section Curry. *)
+(* Local Notation "f == g" := (equiv_op f g). *)
+(* Variable C D E : category. *)
+(* Section CurryOb. *)
+(* Variable x : Fun(C * D, E). *)
+(* Section CurryObOb. *)
+(* Variable c : Ob C. *)
+(* Definition curry_obob : Fun (D, E). *)
+(* set F := (fun d1 d2 (f : Mor(d1, d2)) *)
+(*           => 'x ((id, f) : Mor((c, d1), (c, d2)))). *)
+(* apply: (@FunMixin _ _ _ F _ _ _). *)
+(* move=> ?; apply: id_id. *)
+(* move=> ? ? ? f g. *)
+(* apply: Congruence.etrans; last apply: pres_comp. *)
+(* apply: pres_equiv. *)
+(* apply: Congruence.subst_left. *)
+(* by move=> ? ? ? ? H1 H2; split. *)
+(* apply: compm0. *)
+(* move=> ? ? ? ? H. *)
+(* apply: pres_equiv. *)
+(* by split => //; apply/reflP. *)
+(* Defined. *)
+(* End CurryObOb. *)
+(* Section CurryObMor. *)
+(* Definition curry_obmor c1 c2 (f : Mor(c1, c2)) : Nat(curry_obob c1, curry_obob c2). *)
+(* set N := (fun d => 'x ((f, id) : Mor((c1, d), (c2, d))) *)
+(*                    : Mor (curry_obob c1 d, curry_obob c2 d)). *)
+(* apply (@NatMixin _ _ _ _ N). *)
+(* move=> ? ? g. *)
+(* apply: Congruence.etrans => /=. *)
+(* apply/symP; apply pres_comp. *)
+(* apply: Congruence.etrans; last apply pres_comp. *)
+(* apply: pres_equiv; split. *)
+(*  apply: Congruence.etrans; last apply: comp0m. *)
+(*  apply/symP; apply: compm0. *)
+(* apply: Congruence.etrans; last apply: compm0. *)
+(* apply/symP; apply: comp0m. *)
+(* Defined. *)
+(* End CurryObMor. *)
+(* Definition curry_ob : Fun(C, Fun (D, E)). *)
+(* apply (@FunMixin _ _ curry_obob curry_obmor). *)
+(* + move=> ? ?; by apply: Congruence.etrans; first apply: id_id; apply/reflP. *)
+(* + move=> ? ? ? ? ? ?. *)
+(*   apply: Congruence.etrans; last apply: pres_comp. *)
+(*   apply: pres_equiv; split; first by apply/reflP. *)
+(*   by apply: Congruence.etrans; last apply: compm0; apply/reflP. *)
+(* + move=> ? ? ? ? ? ?. *)
+(*   by apply: pres_equiv; split; last by apply/reflP. *)
+(* Defined. *)
+(* End CurryOb. *)
+(* Section CurryMor. *)
+(* Variables x y : Fun(C * D, E). *)
+(* Variable f : Mor(x, y). *)
+(* Section CurryMorMor. *)
+(* Variable c : Ob C. *)
+(* Definition curry_mormor : Nat((curry_ob x) c, (curry_ob y) c). *)
+(* apply (@NatMixin _ _ _ _ (fun d => f (c, d) : Mor(curry_ob x c d, curry_ob y c d))). *)
+(* by move=> ? ? ? /=; apply: naturality. *)
+(* Defined. *)
+(* End CurryMorMor. *)
+(* Definition curry_mor : Nat(curry_ob x, curry_ob y). *)
+(* apply (@NatMixin _ _ (curry_ob x) (curry_ob y) curry_mormor). *)
+(* by move=> ? ? ? ? /=; apply: naturality. *)
+(* Defined. *)
+(* End CurryMor. *)
+(* Definition curry : Fun(Fun(C * D, E), Fun(C, Fun (D, E))). *)
+(* apply (@FunMixin _ _ curry_ob curry_mor). *)
+(* by move=> ? ? ?; apply/reflP. *)
+(* by move=> ? ? ? ? ? ? ?; apply/reflP. *)
+(* move=> ? ? ? ? H c d; exact (H (c, d)). *)
 (* Defined. *)
 
-(* TODO: write about adjunctions. *)
+(* Section UnCurryOb. *)
+(* Variable x : Fun(C, Fun(D, E)). *)
+(* Definition uncurry_obob cd : Ob E := x cd.1 cd.2. *)
+(* Definition uncurry_obmor cd1 cd2 (f : Mor(cd1, cd2)) := ('(x cd2.1) f.2) \compm (('x f.1) cd1.2). *)
+(* Definition uncurry_ob : Fun(C * D, E). *)
+(* apply (@FunMixin _ _ uncurry_obob uncurry_obmor). *)
+(* + move=> [] a b. *)
+(*   apply: Congruence.etrans; last (apply/symP; apply: compm0). *)
+(*   apply: compm_comp; first by apply id_id. *)
+(*   have: ('x id) == id by move=> ?; apply id_id. apply. *)
+(* + move=> [??] [??] [??] [f1 f2] [g1 g2]. *)
+(*   apply: Congruence.etrans; last first. *)
+(*   apply: compm_comp; apply naturality. *)
+(*   apply: Congruence.etrans; last (apply/symP; apply: compmA). *)
+(*   apply: Congruence.etrans; last first. *)
+(*   apply: subst_right. *)
+(*   apply: compmA. *)
+(*   apply: Congruence.etrans; last first. *)
+(*   apply: subst_right. *)
+(*   apply: subst_left. *)
+(*   apply: naturality. *)
+(*   apply: Congruence.etrans; last first. *)
+(*   apply: subst_right. *)
+(*   apply/symP; apply: compmA. *)
+(*   apply: Congruence.etrans; last apply: compmA. *)
+(*   apply: Congruence.etrans. *)
+(*   apply/symP; apply: naturality. *)
+(*   apply: compm_comp; last first. *)
+(*   apply: pres_comp. *)
+(*   have : (' x (g1 \compm f1) == (' x g1) \compn (' x f1)) *)
+(*    by (apply: Congruence.etrans; last apply: pres_comp); apply/reflP. *)
+(*   apply. *)
+(* + move=> [??] [??] [f ?] [g ?] [??]. *)
+(*   apply: compm_comp; first by apply: pres_equiv. *)
+(*   have : 'x f == 'x g by apply pres_equiv. *)
+(*   apply. *)
+(* Defined. *)
+(* End UnCurryOb. *)
+(* Section UnCurryMor. *)
+(* Variables x y : Fun(C, Fun(D, E)). *)
+(* Variable f : Mor(x, y). *)
+(* Definition uncurry_mormor cd : Mor(uncurry_ob x cd, uncurry_ob y cd) := f cd.1 cd.2. *)
+(* Definition uncurry_mor : Nat(uncurry_ob x, uncurry_ob y). *)
+(* apply (@NatMixin _ _ (uncurry_ob x) (uncurry_ob y) uncurry_mormor). *)
+(* move=> [??] [??] [g h]. *)
+(* apply: Congruence.etrans; first (apply/symP; apply: compmA). *)
+(* apply: Congruence.etrans; first (apply: subst_left; apply: naturality). *)
+(* apply: Congruence.etrans; last (apply: subst_left; apply: naturality). *)
+(* apply: Congruence.etrans; last (apply: subst_left; apply/symP; apply: naturality). *)
+(* apply: Congruence.etrans; first apply: compmA. *)
+(* apply: Congruence.etrans; last (apply/symP; apply: compmA). *)
+(* apply: subst_right. *)
+(* have: f _ \compm 'x g == 'y g \compm f _ by apply naturality. *)
+(* apply. *)
+(* Defined. *)
+(* End UnCurryMor. *)
+(* Definition uncurry : Fun(Fun(C, Fun (D, E)), Fun(C * D, E)). *)
+(* apply (@FunMixin _ _ uncurry_ob uncurry_mor). *)
+(* + move=> ? ?; apply/reflP. *)
+(* + move=> ? ? ? ? ? ?; apply/reflP. *)
+(* + move=> ? ? ? ? H c; exact (H c.1 c.2). *)
+(* Defined. *)
+(* End Curry. *)
+
+(* Lemma curryK C D E :@isomorphisms cats _ _ (curry C D E) (uncurry C D E). *)
+
+(* Section Hom. *)
+(* Variables C : category. *)
+(* Definition hom_ob (p : Ob ((Op C) * C)) := Mor(pfst p, psnd p) : Ob types. *)
+(* Definition hom_mor (p q : Ob (C * (Op C))) (f : Mor (p, q)) : Mor (hom_ob p, hom_ob q) *)
+(*   := fun g => ('pfst f) \compm g \compm ('psnd f). *)
+(* Axiom hom_id_id : Functor.maps_identity_to_identity hom_mor. *)
+(* Axiom hom_pres_comp : Functor.preserve_composition hom_mor. *)
+(* Axiom hom_pres_equiv : Functor.preserve_equivalence hom_mor. *)
+(* Definition hom := FunMixin hom_id_id hom_pres_comp hom_pres_equiv. *)
+(* Canonical hom_funType := Eval hnf in FunType _ _ hom. *)
+(* End Hom. *)
