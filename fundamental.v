@@ -1625,16 +1625,218 @@ apply/symP;
 by case: (Functor.map_of_morphisms (Functor.class R) box).
 Defined.
 
-Lemma adj_unitK :
-  isomorphisms (F \compfn adj_unit : Mor (F, F \compf G \compf F))
-               (adj_counit \compnf F).
+Lemma domLS2K x : isomorphisms (domLS2 x).1 (domLS2 x).2.
+rewrite /domLS2 /domRS2 /= /domLS1 /domRS1 /=.
+case: adj adj2C => [] L R [] H [] bH11 bH12 bH1H [] bH21 bH22 bH2H.
+case: bH2H => /(_ x) H1 /(_ x) H2.
+apply: Isomorphisms; first apply H1; last apply H2.
+Defined.
+
+Lemma domRS2K x : isomorphisms (domRS2 x).1 (domRS2 x).2.
+rewrite /domLS2 /domRS2 /= /domLS1 /domRS1 /=.
+case: adj adj2C => [] L R [] H [] bH11 bH12 bH1H [] bH21 bH22 bH2H.
+case: bH2H => /(_ x) H1 /(_ x) H2.
+apply: Isomorphisms; first apply H1; last apply H2.
+Defined.
+
+Lemma domRS1K x : isomorphisms (domRS1 x).1 (domRS1 x).2.
+rewrite /domLS2 /domRS2 /= /domLS1 /domRS1 /=.
+case: adj adj2C => [] L R [] H [] bH11 bH12 bH1H [] bH21 bH22 bH2H.
+case: bH1H => /(_ x) H1 /(_ x) H2.
+apply: Isomorphisms; first apply H1; last apply H2.
+Defined.
+
+Lemma domLS1K x : isomorphisms (domLS1 x).1 (domLS1 x).2.
+rewrite /domLS2 /domRS2 /= /domLS1 /domRS1 /=.
+case: adj adj2C => [] L R [] H [] bH11 bH12 bH1H [] bH21 bH22 bH2H.
+case: bH1H => /(_ x) H1 /(_ x) H2.
+apply: Isomorphisms; first apply H1; last apply H2.
+Defined.
+  
+Lemma adj2_comp a b c d (h : Mor(idf _ d, a)) (f : Mor (idf _ a, G b)) (g : Mor (b, c)) : 
+mor (adj.2 (, ('G g) \compm f \compm h))
+== (domRS2 (, ('G g) \compm f \compm h)).2 \compm adj_counit c \compm 'F (('G g) \compm f \compm h) \compm 'F (domLS2 (, ('G g) \compm f \compm h)).1.
 Proof.
-apply: Isomorphisms => X.
+do !(apply: Congruence.etrans; last (apply/symP; apply: compmA)).
+apply/symP; apply: isomKL; first apply domRS2K.
+do !(apply: Congruence.etrans; first (apply/symP; apply: compmA)).
+apply: isomKR; first (apply: pres_isom; apply isom_sym; apply domLS2K).
+apply adj_counitE.
+Defined.
+
+(* Lemma test X :  *)
+(* (domRS1 (adj.2 (@CommaOb _ _ _  (idf _) G _ _ (adj_unit X)))).1. == *)
+(* (domRS2 (@CommaOb _ _ _  (idf _) G _ _ (adj_unit X))).1 \compm adj.2 (@CommaOb _ _ _  (idf _) G _ _ (adj_unit X)). *)
+(* Lemma com_ob_mor1 x : *)
+(*   @equiv_op (obs_equivType (com F (idf _))) *)
+(*   (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F (G x)))) *)
+(*   (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x)). *)
+(* Proof. *)
+(* apply: (Pairing (Pairing id (adj_counit x) _) *)
+(*                 (Pairing id _ _) *)
+(*                   _). *)
+(* rewrite equivE /=. *)
+(* (domRS2 (@CommaOb _ _ _ (idf _) G _ _ (Category.id ((G x))))).2 *)
+(* (domLS2 (@CommaOb _ _ _ (idf _) G _ _ (Category.id ((G x))))).2 *)
+(*   'G f \compm adj_unit a == 'G (domRS1 _).1 \compm (adj.1 (, f)) \compm (domLS1 _).2. *)
+(* set box := (Pairing id id *)
+(*     (transP (symP (compm0 _)) (transP (compm0 _) (subst_right (symP (id_id _))))) *)
+(*   : comma_mor *)
+(*            (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F (G x)))) *)
+(*            (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F (G x))))). *)
+  
+(*   (@CommaOb _ _ _ (idf _) G _ _ (Category.id (G x))). *)
+(* set box := (Pairing id (adj_counit x) *)
+(*     (transP (symP (compm0 _)) (transP (compm0 _) (subst_right (symP (id_id _))))) *)
+(*   : comma_mor *)
+(*            (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F (G x)))) *)
+(*            (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x))). *)
+(* rewrite /adj_counit /=. *)
+(* case: ('(adj.1) box). *)
+
+(* set box := (Pairing (Category.id a) f *)
+(* (transP (symP (compm0 (' (idf D) f))) (transP (compm0 (' (idf D) f)) (subst_right (symP (id_id a))))) *)
+(*             : comma_mor (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F a)))  *)
+(*                         (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F (G x))))) *)
+
+
+(*   'G (domRS1 _).1 \compm adj.1 (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x)) \compm (domLS1 _).2 == id. *)
+(*   id. *)
+(*   have : comma_mor *)
+(*            (@CommaOb _ _ _ (idf _) G _ _ (Category.id (G (F (G x))))) *)
+(*            (* (adj.1 (@CommaOb _ _ _ F (idf _) _ _ (Category.id (F (G x))))) *) *)
+(*            (adj.1 (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x))). *)
+(*   apply (Pairing  (domLS1 (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x))).1). *)
+  
+(*   Check  *)
+(*   (domLS1 (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x))).2  *)
+(*   \compm  *)
+(*   (adj_unit (G x)) . *)
+(*   Check (domLS1 (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x))).1. *)
+(* set box := (Pairing id (adj_counit x) *)
+(*     (transP (symP (compm0 _)) (transP (compm0 _) (subst_right (symP (id_id _))))) *)
+
+(*    \compm adj.1 (@CommaOb _ _ _ F (idf _) _ _ (adj_counit x)) \compm (domLS1 _).2 == id. *)
+(* case: ('(adj.1) box). *)
+  
+(* Lemma domRS1P a b c (f : Mor (b, idf _ c)) (g : Mor (F a, idf _ b)) : *)
+(*   (domRS1 (, (f \compm g))).1 == (domRS1 (, g)).1. *)
+
+Lemma adj_unitK :
+  ((adj_counit \compnf F) \compn (F \compfn adj_unit) : Mor (F, F)) == id.
+Proof.
+move=> X.
 apply: Congruence.etrans.
 apply: adj_counitE.
-move: adj_counitE.
-rewrite /adj_unit /domLS2 /domRS2 /domLS1 /domRS1 /=.
+rewrite /adj_unit /= /domLS2 /domRS2 /= /domLS1 /domRS1 /=.
 case: adj adj2C => [] L R [] H [] bH11 bH12 bH1H [] bH21 bH22 bH2H.
+
+set box :=
+(Pairing (adj_unit X) ((adj_counit \compnf F) X) reflP :
+comma_mor (@CommaOb _ _ _ F (idf _) _ _ ((F \compfn adj_unit) X)) (@CommaOb _ _ _ F (idf _) _ _ ((adj_counit \compnf F) X))).
+Check (naturality ((adj_counit \compnf F) \compn (F \compfn adj_unit)) (adj_unit X)).
+move: (naturality adj_counit ('F (adj_unit X))).
+rewrite /=.
+Check (naturality adj_unit ('G (adj_counit (F X)))).
+Check (naturality adj_counit ((F \compfn adj_unit) X)).
+                  (( \compnf F) X)).
+                  ((F \compfn adj_unit) X)).
+apply: identity_morphism_is_the_unique => ? f.
+Check (naturality (F \compfn adj_unit) f).
+\compn 
+(adj_counit \compnf F)
+apply/symP.
+apply: naturality.
+Check (naturality (F \compfn adj_unit) _).
+Check (naturality adj_counit ).
+Check (naturality adj_unit ('G (adj_counit (F X)))).
+                  id).
+                                       ('F (adj_unit X))).
+Check (naturality (F \compfn adj_unit) id).
+Check (naturality (adj_counit \compnf F) (adj_unit X)).
+apply: adj_counitE.
+rewrite /adj_unit /=.
+case: box.
+
+case: ('(adj.1) box).
+apply/symP; 
+
+apply: Congruence.etrans.
+apply/symP.
+apply: (transP (subst_left (id_id _)) (transP (symP (comp0m _)) (comp0m _))).
+have: comma_mor (, (adj_counit \compnf F) X).
+Check 
+rewrite /=.
+
+apply: Congruence.etrans.
+apply: subst_left.
+apply: subst_right.
+apply: adj2_comp.
+apply: Congruence.etrans; first apply: compmA.
+apply: Congruence.etrans; first (apply: subst_right; apply: compmA).
+apply: Congruence.etrans; first (do 2!apply: subst_right; apply/symP; apply: pres_comp).
+apply: Congruence.etrans; first (do 2!apply: subst_right; apply: pres_equiv).
+set T := , _; by case: (domLS2K T).
+do !(apply: Congruence.etrans; first (apply: subst_right; apply: compmA)).
+apply: Congruence.etrans.
+apply/symP; apply: compmA.
+apply: Congruence.etrans.
+apply: subst_left.
+set T := , _; case: (domRS2K T) => ?; apply.
+apply: Congruence.etrans.
+apply/symP; apply comp0m.
+apply: Congruence.etrans.
+apply: subst_right.
+apply: subst_right.
+apply: pres_equiv.
+apply: subst_right.
+set T := , _; case: (domLS2K T) => ?; apply.
+apply: Congruence.etrans.
+apply: subst_right.
+apply: subst_right.
+apply: pres_equiv.
+apply/symP; apply: compm0.
+apply: Congruence.etrans.
+apply: subst_right.
+apply: subst_right.
+apply: pres_equiv.
+apply: id_id.
+apply: Congruence.etrans.
+apply: subst_right.
+apply: subst_right.
+apply: id_id.
+apply: Congruence.etrans.
+apply: subst_right.
+apply/symP; apply: compm0.
+apply: Congruence.etrans.
+rewrite /adj_counit /=.
+apply: Congruence.etrans.
+apply: subst_left.
+apply: subst_right.
+apply: adj2_comp.
+
+apply: Congruence.etrans; first apply: subst_left.
+
+apply: Congruence.etrans; first apply: compmA.
+apply: Congruence.etrans; first (do 2!apply: subst_right; apply/symP; apply: pres_comp).
+set T := , _; by case: (domLS2K T).
+
+rewrite /adj_counit.
+rewrite /=.
+
+apply/symP; 
+apply: compm0.
+
+
+apply: Congruence.etrans; first (apply: subst_right; apply: compmA).
+rewrite /=.
+do !(apply: Congruence.etrans; first (do !apply: subst_right; apply: compmA)).
+
+rewrite /=.
+
+rewrite /=.
+
+
 do !(apply: Congruence.etrans; first apply: compmA).
 apply: isomKL.
 apply: Isomorphisms.
@@ -1652,9 +1854,22 @@ apply (H1 T).
 case: bH2H => H1 H2.
 set T := , _.
 by case: (H2 T).
-
+set T := , _.
+vm_compute.
+Check snd (bH22 T).
+apply: Congruence.etrans; last first.
+apply: subst_left.
+apply: subst_right.
+case: bH2H => H1 H2.
+case: (H1 T).
+move=> /= H1' H2'.
+apply H2'.
 rewrite /=.
-apply: Congruence.etrans.
+
+
+apply: subst_right.
+
+apply: (_ : mor (R T) == _).
 apply/symP; apply: pres_comp.
 apply: Congruence.etrans.
 apply: pres_equiv.
