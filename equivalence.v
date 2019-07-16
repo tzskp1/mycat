@@ -230,12 +230,12 @@ Lemma subst_left f f' g :
   f == f' -> F f g == F f' g.
 Proof.
   move => ?; apply: comp_op => //; apply reflP.
-Qed. 
+Defined.
 Lemma subst_right f g g' :
   g == g' -> F f g == F f g'.
 Proof.
   move => ?; apply: comp_op => //; apply reflP.
-Qed. 
+Defined.
 Variable G : e1 -> e2.
 Variable comp_op' : forall f f', f == f' -> G f == G f'.
 Lemma congr1 f f' :
