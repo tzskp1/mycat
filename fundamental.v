@@ -886,6 +886,21 @@ apply: transP; first (apply: subst_left; apply i121).
 apply/symP; apply comp0m.
 Defined.
 
+Lemma inv_eq C (a b : Ob C)
+      (i1 i1' : Mor (a, b))
+      i2 i2' :
+  isomorphisms i1 i2 ->
+  isomorphisms i1' i2' ->
+  i1 == i1' ->
+  i2 == i2'.
+Proof.
+move=> H1 [H21 H22] H3.
+apply: (invm1E H1).
+constructor.
+ by apply: transP; first (apply: subst_right; apply H3).
+by apply: transP; first (apply: subst_left; apply H3).
+Defined.
+
 Lemma isom_sym C (b c : Ob C) (i1 : Mor (b, c)) i2 : 
   isomorphisms i1 i2 -> isomorphisms i2 i1.
 Proof.
@@ -914,9 +929,9 @@ apply: Congruence.etrans; first (apply: subst_right; apply H2).
 apply/symP. apply compm0.
 Defined.
 
-Lemma isomC C D (F : Fun (C, D)) (G : Fun (D, C))
-  (i : isomorphisms G F) :
-  forall a, ((F \compf G) \compfn i.1.1) a == (i.1.1 \compnf (F \compf G)) a.
+Lemma isomC C D (F : Fun (C, D)) (G : Fun (D, C)) (i : isomorphisms G F) :
+  ((F \compf G) \compfn i.1.1 : Mor (F \compf G \compf F \compf G, _))
+  == i.1.1 \compnf (F \compf G).
 Proof.
 case: i => [] [i11 i12] [i1211 i1112] [i21 i22] [i2122 i2221] a.
 apply: invm1E.
@@ -947,197 +962,90 @@ Lemma isom_fact C D (F : Fun (C, D)) (G : Fun (D, C))
   \compm ((isomK _ (isom_sym i)).2) in
   (isomK b i).1 \compm 'F g == f.
 Proof.
-  unfold isomK.
-  case: (i) => /= [] [i11 i12 [i1112 i1211]] [i21 i22 [i2111 i2221]].
+have H11: forall a, ((F \compf G) \compfn i.1.1) a == (i.1.1 \compnf (F \compf G)) a.
+ by apply isomC.
+have H22: forall a, ((G \compf F) \compfn i.2.1) a == (i.2.1 \compnf (G \compf F)) a.
+ case: i H11 => [] i1 i2 ?.
+ apply: (isomC (Isomorphisms i2 i1)).
+case: i H11 H22 => /= [] [i11 i12 [i1112 i1211]] [i21 i22 [i2111 i2221]] H11 H22.
+apply: transP.
+ apply: subst_right.
+ apply: transP.
+  apply: pres_equiv.
+  apply: subst_left.
   apply: transP.
-   apply: subst_right.
-   apply: pres_equiv.
-   apply: subst_left.
-   apply: subst_right.
-   apply: pres_equiv.
-   apply: (naturality i12 f).
-  apply: transP.
-   apply: subst_right.
-   apply: pres_equiv.
-   apply: subst_left.
-   apply: subst_right.
-   apply: pres_comp.
-  apply: transP.
-   apply: subst_right.
-   apply: pres_equiv.
-   apply: subst_left.
+   apply: transP.
+    apply: subst_right.
+    apply: transP.
+     apply: pres_equiv.
+     apply: (naturality i12 f).
+    apply: pres_comp.
    apply/symP; apply: compmA.
-  apply: transP.
-   apply: subst_right.
-   apply: pres_equiv.
-   apply: subst_left.
-   apply: subst_left.
-   apply: (naturality i21).
-  apply: transP.
-   apply: subst_right.
-   apply: pres_comp.
-  apply: transP.
-   apply: subst_right.
-   apply: subst_left.
-   apply: pres_comp.
-  do !(apply: transP; first (apply/symP; apply: compmA)).
-  apply: transP.
-   apply: subst_left.
-   apply/symP.
-   apply: compmA.
-  apply: transP.
-   apply: subst_left.
-   apply: subst_left.
-   apply: subst_right.
-   apply: pres_comp.
-  apply: transP.
-   apply: subst_left.
-   apply: subst_left.
-   apply/symP.
-   apply: compmA.
-  apply: transP.
-   apply: subst_left.
-   apply: subst_left.
-   apply: subst_left.
-   apply: (naturality i11).
-  do !(apply: transP; first apply: compmA).
-  apply: transP; last (apply/symP; apply: compm0).
-  apply: subst_right.
-  apply: isomKL.
-   apply: Isomorphisms.
-    apply: (i1211 (F a)).
-    apply: (i1112 (F a)).
-  apply: transP.
-   apply: subst_right.
-   apply/symP; apply pres_comp.
-  apply: transP.
-   apply/symP; apply pres_comp.
-  apply: transP; last apply: compm0.
-  apply: transP; last (apply/symP; apply: comp0m).
-  apply/symP; apply: isomKR.
-  apply: Isomorphisms.
-   apply (i1112 (F a)).
-   apply (i1211 (F a)).
+  apply: subst_left.
+  apply: (naturality i21).
+ apply: transP.
+  apply: pres_comp.
+ apply: subst_left.
+ apply: pres_comp.
+do !(apply: transP; first (apply/symP; apply: compmA)).
+apply: transP.
+ apply: subst_left.
+ apply: transP.
   apply/symP.
-  apply: transP.
-   apply: subst_left.
-   apply: pres_equiv.
-   apply/symP.
-   apply: compmA.
-  apply: transP.
-   apply: subst_left.
-   apply: pres_comp.
-  apply: transP.
-   apply: compmA.
+  apply: compmA.
+ apply: subst_left.
+ apply: transP.
   apply: transP.
    apply: subst_right.
-   apply/symP.
-   apply (naturality i11).
+   apply: pres_comp.
+  apply/symP.
+  apply: compmA.
+ apply: transP.
+  apply: subst_left.
+  apply: (naturality i11).
+ apply: subst_right.
+ apply: pres_equiv.
+ apply/symP; apply H22.
+do !(apply: transP; first apply: compmA).
+apply: transP.
+ apply: subst_right.
+ do !(apply: transP; first (apply/symP; apply: compmA)).
+ do 2!apply: subst_left.
+ apply: (naturality i11).
+apply: transP.
+ apply: subst_right.
+ apply: subst_left.
+ apply: transP.
+  apply compmA.
+  apply: subst_right.
   apply: transP.
-   apply/symP;
-   apply: compmA.
-  apply: isomKR.
-   do !apply: pres_isom.
-   apply: Isomorphisms.
-    apply: (i2111 a).
-    apply: (i2221 a).
+   apply: transP.
+    apply: subst_left.
+    apply/symP; apply H11.
+   apply/symP; apply: pres_comp.
+ apply: pres_equiv.
+ apply: transP.
   apply: transP.
-   apply: subst_left.
-    apply pres_comp.
+   apply/symP; apply: pres_comp.
+  apply: pres_equiv.
+  apply i1211.
+ apply: id_id.
+apply: transP.
+ apply: subst_right.
+ apply: transP.
   apply: transP.
-   apply: compmA.
-  apply: isomKL.
-   do !apply: pres_isom.
-   apply: Isomorphisms.
-    apply: (i2221 (G (F a))).
-    apply: (i2111 (G (F a))).
-  have H11: forall a, ((F \compf G) \compfn i11) a == (i11 \compnf (F \compf G)) a.
-   move=> ?.
-    unfold compnf, compnf_map.
-    unfold compfn, compfn_map.
-    rewrite /=.
-    unfold compfm.
-    apply: invm1E.
-     do !apply: pres_isom.
-      constructor.
-       apply i1211.
-       apply i1112.
-      constructor.
-      apply: transP.
-      apply: (naturality i11).
-       apply i1112.
-      apply: isomKR.
-       constructor.
-        apply i1211.
-        apply i1112.
-      apply: transP; last apply comp0m.
-      apply: transP; last (apply/symP; apply compm0).
-      apply/symP.
-      apply: isomKL.
-       constructor.
-        apply i1112.
-        apply i1211.
-      apply/symP.
-      apply: transP.
-       apply: (naturality i11).
-        apply i1112.
-     apply: transP.
-      apply: subst_right.
-       apply/symP; apply H11.
-     apply: transP.
-       do 2!(apply/symP; apply: pres_comp).
-     apply: transP.
-      apply: pres_equiv.
-      apply i1112.
-   have H22: forall a, (i22 \compnf (G \compf F)) a == ((G \compf F) \compfn i22) a.
-   move=> ?.
-    unfold compnf, compnf_map.
-    unfold compfn, compfn_map.
-    rewrite /=.
-    unfold compfm.
-    apply: invm1E.
-      constructor.
-       apply i2111.
-       apply i2221.
-      constructor.
-      apply: isomKR.
-       constructor.
-        apply i2221.
-        apply i2111.
-      apply: transP; last apply comp0m.
-      apply: transP; last (apply/symP; apply compm0).
-      apply/symP.
-      apply: isomKL.
-       constructor.
-        apply i2111.
-        apply i2221.
-      apply: transP; last first.
-       apply/symP.
-       apply: (naturality i21).
-      apply/symP.
-       apply i2111.
-      apply: transP.
-       apply: (naturality i21).
-      apply i2111.
-     apply: transP; last first.
-      apply: subst_left.
-      apply: pres_equiv.
-      apply/symP.
-      apply: H22.
-     apply: transP; last first.
-      apply: subst_right.
-       apply comp0m.
-     apply: transP; last first.
-      do !apply: pres_comp.
-     do !apply: pres_equiv.
-     apply: transP; last first.
-      apply: pres_comp.
-     apply: transP; last first.
-      apply: pres_equiv.
-       apply/symP.
-       apply i2111.
-     apply/symP.
+   apply: transP.
+    apply: subst_left.
+    apply: transP.
+     apply: subst_right.
      apply: id_id.
+    apply/symP; apply compm0.
+   apply/symP; apply: pres_comp.
+  apply: pres_equiv.
+  apply i2221.
+ apply: id_id.
+apply/symP.
+apply compm0.
 Defined.
 End trivials.
 
@@ -1278,7 +1186,7 @@ apply:
 (Pairing
 (Pairing id id (transP (symP (compf0m _)) (transP H (compmf0 _))))
 (Pairing id id (transP (symP (compf0m _)) (transP (symP H) (compmf0 _))))).
-do 2!constructor => //; by apply/symP.
+do 2!constructor => //; apply/symP; apply compm0.
 Defined.
 End Comma.
 Arguments CommaOb {_ _ _} _ _ {_ _} _.
@@ -1702,7 +1610,8 @@ have H: ' ((pointE Fun (I, C)).2 F) pt \compm v == @system (vertex v) (mor v) (c
 apply (Pairing (Pairing id pt H) (Pairing id pt H));
 apply: Isomorphisms;
 constructor => //;
-by apply/symP.
+apply/symP;
+apply compm0.
 Defined.
 End Limit.
 Arguments limit {_ _} F L Lm.
@@ -2062,8 +1971,8 @@ apply: transP; last (apply/symP; apply compmA).
 apply: transP; last (apply: subst_right;
 apply: (_ : 'pfst (adj1C.2 (, f) \compm adj1C.1 (, f)) == _); by apply: pres_comp).
 rewrite /adj1C.
-case: adj => ? ? [? [? ?]] [/(_ (, f)) [H11 H12] /(_ (, f)) [H21 H22]].
-apply: transP; last (apply: subst_right; apply: pres_equiv; apply/symP; apply H11).
+case: adj => ? ? [? [? ?]] /= [/(_ (, f)) [H11 H12] /(_ (, f)) [H21 H22]].
+apply: transP; last (apply: subst_right; apply/symP; apply H11).
 apply compm0.
 Defined.
 
@@ -2079,7 +1988,7 @@ apply: transP; first (do 2!apply: subst_left; apply/symP; apply pres_comp).
 apply: transP; first (do 2!apply: subst_left; apply pres_equiv;
  apply: (_ : _ == 'psnd (adj1C.2 (, f) \compm adj1C.1 (, f))); by apply: pres_comp).
 rewrite /adj1C.
-case: adj => ? ? [? [? ?]] [/(_ (, f)) [H11 H12] /(_ (, f)) [H21 H22]].
+case: adj => ? ? [? [? ?]] /= [/(_ (, f)) [H11 H12] /(_ (, f)) [H21 H22]].
 apply: transP; first (do 2!apply: subst_left; apply: pres_equiv; apply H12).
 apply subst_left.
 apply/symP; apply compf0m.
@@ -2118,7 +2027,7 @@ apply/reflP.
 Defined.
 
 Local Lemma adj_isom1 f : adj.2 (adj.1 f) == f.
-by case: adj => ? ? [] /(isomK _).
+by case: adj => ? ? [] /= /(isomK _).
 Defined.
 
 Lemma adj_counit : Nat (F \compf G, idf _).
@@ -2194,15 +2103,337 @@ Lemma umm :
   @equiv_op (partial_equivType (Category.class (funs (com F (idf _)) (com (idf _) G))) _ _)
   ((adj12id \compnf adj.1) \compn (adj.1 \compfn adjid21)) (idn _).
   move=> X.
-  unfold adjid21, adj12id.
-  move: adj_unitE.
-  unfold adj_unit, adj1C.
-  case: adj => /= L R [] [] /= a b ?.
-  case: a b => [] f' g' H' [] f g H.
-  move=> H''.
+  unfold adjid21, adj12id, adj_unit, adj1C.
+  case: adj => /= L R [] i /= b.
+  move: (isomC i).
+  move: (isomC (isom_sym i)).
+  case: (i) => [] /= [] f' g' H' [] f g H iC iC'.
+  unfold compfn, compnf => /=.
+  unfold compn_map, compfn_map, compnf_map.
+  rewrite /=.
+  apply: isomKR.
+  case: H' iC iC' => e1 e2 iC iC'.
+  rewrite /=.
+   apply: pres_isom.
+  constructor.
+   apply: e1.
+   apply: e2.
+  rewrite /=.
+  apply: transP; last apply: comp0m.
+  apply: isomKm.
+  apply: (isom_sym i).
+  apply: transP; last (apply/symP; apply: iC').
+  apply: isomKm.
+  apply: i.
+  apply: transP.
+   apply iC.
+  apply: transP.
+  apply: comp0m.
+  apply: isomKR.
+  case: H iC iC' => e1 e2 iC iC'.
+  apply: (_ : isomorphisms (((L \compf R) \compfn g) (L X)) _).
+  constructor.
+  apply: transP.
+  apply: (naturality f).
+   apply: e1.
+  apply: isomKL.
+   rewrite /=.
+   do !apply: pres_isom.
+  constructor.
+   apply e1.
+   apply e2.
+  apply: transP; last first.
+   apply: compm0.
+  apply: transP; last first.
+   apply/symP.
+   apply: comp0m.
+  apply/symP.
+  apply: isomKR.
+   do !apply: pres_isom.
+  constructor.
+   apply e2.
+   apply e1.
+  apply: transP; last first.
+  apply/symP.
+  apply: (naturality f).
+  apply/symP.
+   apply: e1.
+ apply/symP.
+  apply: isomKR.
+   do !apply: pres_isom.
+  case: H iC iC' => e1 e2 iC iC'.
+  constructor.
+   apply e1.
+   apply e2.
+ apply/transP.
+  apply: pres_equiv.
+  apply/symP.
+   apply iC'.
+ apply/transP; last first.
+  apply:comp0m.
+ apply/transP; last first.
+  apply/symP.
+  apply:compm0.
+ apply/symP.
+ apply: isomKL.
+ apply: (_ : isomorphisms (g (L (R (L X)))) _).
+  constructor.
+  apply: transP.
+  apply/symP.
+  apply: (naturality g).
+  case: H iC iC' => e1 e2 iC iC'.
+  apply e1.
+  apply: isomKL.
+   case: H iC iC' => e1 e2 iC iC'.
+   constructor.
+   apply e1.
+   apply e2.
+ apply/transP; last first.
+  apply: compm0.
+ apply iC.
+ apply/symP.
+ apply: isomKL.
+ case: H iC iC' => e1 e2 iC iC'.
+   constructor.
+   apply e1.
+   apply e2.
+ apply/transP; last first.
+  apply: compm0.
+ apply/transP; last first.
+  apply: iC.
+ do !apply: pres_equiv.
+ case: b => H1' H2' H12'.
+ apply: isomKm.
+  apply: (isom_sym i).
+ apply: isomKm.
+  apply: i.
+ apply: transP.
+  apply: pres_equiv.
+  apply: iC'.
+ move: (naturality H1' (f' ((R \compf L) X))).
+ rewrite /=.
+ do !(unfold forget_com_mor, fcom, compfm, compnf_map => /=).
+ move=> H3.
+ constructor.
+  apply: transP.
+  apply: comp0m.
+ case: H3 => /= H333 ?.
+  apply: transP.
+  apply: subst_left.
+  apply/symP.
+  case: H12' => H33 H43.
+  apply: (_ : (H2' (R (L X))).1 \compm (H1' (R (L X))).1 == id).
+  apply H33.
+ apply: transP.
+ apply: compmA.
+ apply: transP.
+  apply: subst_right.
+  apply H333.
+ case: (naturality H2' (f' ((R \compf L) X))) => /= H444 ?.
+ apply: transP.
+  apply/symP.
+  apply: compmA.
+  
+ apply: transP.
+  apply: subst_left.
+  apply H444.
+ Check (naturality H2' 
+  
+  
+  apply: id_id.
+  
+  Check (H33 (R ( L X))).
+  apply: H43.
+ 
+ rewrite /=.
+ move: (naturality H2' (f' X)).
+ move: (naturality H2' (f (L X))).
+ rewrite /=.
+ apply: isomKm.
+  apply: H'.
+  apply: (isom_sym H').
+ apply: transP.
+  apply: comp0m.
+ apply: transP.
+  apply: subst_left.
+ apply/symP.
+  apply (_ : H2' _ \compm H1' _ == _).
+ 
+ Check ('L (f' X)).
+ 
+ Check f (L X) \compm H2' _.
+ Check  \compf b.1.
+ have H'': (H1' \compn ((fcom _ _ \compf L) \compfn f')) X == ('(fcom _ _) f) (L X).
+           ('L (f' X)).
+  case: H12' => H21'' ?.
+  apply: transP.
+  apply: subst_left.
+  apply H21''.
+  apply: transP.
+  apply/symP.
+  apply comp0m.
+  constructor; apply/reflP.
+ apply/symP => /=.
+ constructor.
+ apply: transP; last first.
+ rewrite equivE /=.
+ apply/symP.
+ apply (_ : (H2' \compn H1' \compn ((fcom _ _ \compf L) \compfn f')) X == ('L (f' X))).
+          ('L (f' X)) == (H2' \compn H1' \compn ((fcom _ _ \compf L) \compfn f')) X).
+ move: H'' => /= H''.
+ apply: transP; last apply H''.
+ 
+ have H'': (H2' \compn H1' \compn ((fcom _ _ \compf L) \compfn f')) X == ('L (f' X)).
+ rewrite /=.
+ apply: isomKm.
+ apply (isom_sym H12').
+ Check H1' \compn ((fcom _ _ \compf L) \compfn f').
+       ('L (f' X)).
+ 
+                            ((Pairing@{q q} f' g' H'): Mor (id, L \compm R))).
+             f'').
+              ht\compf L) f''.
+ Check '(fcom _ _ \compf L) f''.
+ Check '(fcom _ _) f''.
+ rewrite /=.
+ 
+  apply: compm0.
+ rewrite /=.
+ rewrite /=.
+ Check (naturality g _).
+   
+  apply/symP.
+   
+  apply (_ : isomorphisms (((R \compf L) \compfn g') X) _).
+                                \compfn g) (L X)) _).
+   
+  apply: pres_isom.
+  case: H' iC iC' => e1 e2 iC iC'.
+  rewrite /=.
+   apply: pres_isom.
+  constructor.
+   apply: e1.
+   apply: e2.
+  rewrite /=.
+   
+   apply: (naturality g).
+  rewrite /=.
+  
+   rewrite /=.
+   apply: e2.
+   apply: e1.
+  rewrite /=.
+   
+  apply: transP; last 
+  rewrite /=.
+  
+  last (apply/symP; apply: iC').
+  rewrite /=.
+  
+  
+  apply: transP; last first.
+  apply/symP.
+  rewrite /=.
+  unfold compnf_map.
+  apply: compm0.
+  apply: transP; last first.
+  apply/symP.
+  Check (naturality f' _).
+  apply: (naturality f').
+                   (apply: ).
+  rewrite /=.
+  apply: transP.
+   rewrite /=.
+   Check isomC.
+   apply/symP.
+   apply: isomC.
+  case: g H => /=.
+  
+  apply: transP.
+  apply/symP.
+  apply: pres_equiv.
+  apply: isom_fact.
+  last 
+  
+  Check naturality f _.
+  have: forall X, (((f \compnf L) \compn (L \compfn g')) \compnf R) X == (idn _ \compnf R) X.
+   move=> ?.
+   apply: transP.
+   apply/symP.
+  apply: compnfD.
+  unfold compfn, compnf => /=.
+  unfold compn_map, compfn_map, compnf_map.
+  rewrite /=.
+  
+  Check isomC H'.
+   
+    apply: subst_left.
+  
+  Check (f \compnf (L \compf R)).
+  Check (f \compnf L) \compn (f' \compnf (R \compf L)).
+  apply (_ : _ == (f \compnf L) \compn (f' \compnf (R \compf L)) \compn (L \compfn g')).
+  move: (isom_fact (isom_sym i)).
   unfold compn_map.
   apply: compm01E.
   move=> ? h.
+  apply: transP.
+  apply: subst_left.
+  apply/symP.
+  apply: (if' _ _ h).
+  apply: transP; last apply: (if' _ _ h).
+  rewrite /=.
+  unfold compnf_map, compfn_map, isom_sym.
+  apply: transP.
+   apply: subst_left.
+   apply: subst_right.
+   do !apply: pres_comp.
+  apply: transP.
+   apply: subst_left.
+   apply: subst_right.
+   apply: subst_left.
+   apply: pres_equiv.
+   apply: subst_right.
+   apply: pres_equiv.
+   apply: (naturality g).
+  apply: transP.
+   apply: compmA.
+  apply: subst_right.
+  apply: transP; last first.
+   apply/symP.
+   apply: pres_comp.
+  apply: transP.
+   apply: compmA.
+  apply: transP.
+   apply: subst_left.
+   apply: pres_comp.
+  apply: transP.
+   apply: compmA.
+  apply: transP; last first.
+   apply: subst_left.
+   apply/symP; apply: pres_comp.
+  apply: transP; last first.
+   apply/symP; apply: compmA.
+  apply: subst_right.
+  apply: transP.
+   apply: subst_left.
+   apply: pres_equiv.
+   apply: pres_equiv.
+   apply/symP; apply: (naturality g).
+  rewrite /=.
+  apply: subst_right.
+  Check ('L (f X)).
+   apply: (naturality g).
+   
+   apply: subst_right.
+   apply: pres_comp.
+   apply: compmA.
+  rewrite /=.
+  
+  apply: transP.
+  apply/symP.
+  
+  apply pres_comp.
+  rewrite /=.
   Check (naturality (f \compnf L) _).
   Check (naturality (L \compfn g') ('L _)).
   
