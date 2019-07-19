@@ -834,10 +834,6 @@ Notation Op := op_fun.
 
 Section trivials.
 Import PartialEquiv.
-Lemma op_isom C (A B : Ob C) (i1 : Mor (A, B)) i2 :
-  isomorphisms i1 i2 ->
-  isomorphisms (i1 : morph (Op C) _ _) (i2 : morph (Op C) _ _).
-Proof. case=> H1 H2. by constructor. Defined.
 Lemma compfE C D E (F : Fun(C, D)) (G : Fun(D, E)) :
   G \compf F == G \compm F.
 Proof. by apply/reflP. Defined.
@@ -2244,9 +2240,189 @@ Defined.
 Lemma mor_eq1 a :
   '(fcom _ _) (adj_isom2.1.1 _ \compm ('(adj.2) (box2 (CommaOb F (idf _) (Category.id (F a))))))
 == adj2C.1 (CommaOb (idf _) G (adj_unit a)).
-  unfold box2.
-  '(adj.1)
-  '(adj.2) x 
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: pres_equiv.
+ apply/symP.
+ apply: (isom_fact (pres_isom Op (isom_sym adj_isom2)) ((box2 (CommaOb F (idf _) (Category.id (F a)))))).
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_equiv.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_equiv.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: (isomK (isom_sym adj_isom2)).
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_left.
+ apply: (isomK adj_isom2).
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: subst_left.
+ apply: pres_comp.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ do !(apply: transP; first apply: compmA).
+ apply: subst_right.
+ apply: subst_right.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_right.
+ apply: isomK.
+ apply : adj_isom2.
+apply: transP.
+ apply: pres_equiv.
+ apply/symP.
+ apply: compmA.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_left.
+ case: adj_isom2 => [[? ? [H1 H2]] ?].
+ apply H2.
+apply: transP.
+ apply: pres_equiv.
+ apply/symP.
+ apply: comp0m.
+ 
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_right.
+ apply: subst_left.
+ apply: subst_left.
+ apply: subst_left.
+ apply: isomK.
+ apply: adj_isom2.
+ 
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_right.
+ do !(apply: transP; first apply: compmA).
+ apply/reflP.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply/symP; apply: compmA.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_left.
+ case: adj_isom2 => [[? ? [H1 H2]] ?].
+ apply H2.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply/symP. apply: comp0m.
+apply: transP.
+ apply: pres_equiv.
+ apply: subst_right.
+ apply: subst_right.
+ apply: subst_right.
+ apply: subst_right.
+ apply: subst_left.
+ apply: transP.
+ apply: compmA.
+ apply: subst_right.
+ case: adj_isom2 => [[? ? [H1 H2]] ?].
+ apply: transP.
+  apply/symP.
+ apply: subst_left.
+ apply: comp0m.
+ apply: H2.
+
+ 
+ 
+ apply: pres_comp.
+ 
+ apply: subst_left.
+ rewrite /=.
+ 
+ apply/symP.
+ apply: pres_comp.
+
+Check isom_fact (isom_sym adj_isom2) (box1 (CommaOb F (idf _) (Category.id (F a)))).
+
+Check isomK (isom_sym adj_isom2) 
+  (box1 (CommaOb F (idf _) (Category.id (F a)))).
+('(adj.2) (box2 (CommaOb F (idf _) (Category.id (F a))))).
+unfold box2.
+Check adj2C.
+  
+  adj_counit b \compm 'F f ==
+  ('psnd (adj2C.1 _)) \compm adj.2 (, f) \compm 'F ('pfst (adj2C.2 _)).
+  fcom _ _ \compf adj.2
   
 Check isom_fact (isom_sym adj_isom2) (box1 (CommaOb F (idf _) (Category.id (F a)))).
   
