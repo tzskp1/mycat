@@ -6,7 +6,525 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
-(* Set Printing Universes. *)
+Set Printing Universes.
+
+Local Notation "f == g" := (@equiv_op _ f g).
+
+Section Adjunction.
+Import PartialEquiv.
+Section Unit.
+Universes p q.
+Constraint p < q.
+Variable C : category@{p}.
+Variable D : category@{p}.
+Variables (F : functor@{p p} C D)
+          (G : functor@{p p} D C)
+          (adj : adjunction@{q p} F G).
+Local Definition adj_isom : isomorphisms adj.1 adj.2.
+by case: adj => ? ? [] /=.
+Defined.
+
+Lemma com_isomK a b (f : Mor (F a, idf _ b)) g
+  (E : @equiv_op (obs_equivType (com _ _)) g (, f)) :
+  f == E.1.2 \compm g \compm 'F E.2.1.
+Proof.
+case: E => [] [/= f1 f2 fH] [/= g1 g2 gH] [H1 H2].
+apply: transP; last first.
+ apply/symP; apply: compmA.
+apply: transP; last first.
+ apply: subst_right.
+ apply gH.
+apply: transP; last first.
+ apply: compmA.
+apply: transP; last first.
+ apply: subst_left.
+ apply/symP.
+ case: H2 => ?; apply.
+apply comp0m.
+Defined.
+
+(* Definition rem1 X : *)
+(*   comma_mor (adj.2 (CommaOb (idf _) G (adj_unit adj X))) *)
+(*             (CommaOb F (idf _) (Category.id (F X))). *)
+(* apply: (Pairing ('pfst ((adj2C adj).1 _)) ('psnd ((adj2C adj).1 _))). *)
+(* unfold adj_isom, adj_unit, adj2C, adj1C. *)
+(* case: adj => /= L R [] [[f1 g1 [p11 p12]] [f2 g2 [p21 p22]]] [bH11 bH12] [bH1H1 bH1H2]. *)
+(* rewrite /=. *)
+
+(* apply: transP; last apply: comp0m. *)
+(* do 3!(apply: transP; first do !(apply: subst_left; try by (apply/symP; (apply compm0 || apply comp0m)))). *)
+(* apply: transP; first (apply: subst_left; apply: subst_right; apply/symP; apply: compm0). *)
+(* apply/symP. *)
+(* apply: transP. *)
+(* apply: pres_equiv. *)
+(* do 3!(apply: transP; first do !(apply: subst_left; try by (apply/symP; (apply compm0 || apply comp0m)))). *)
+(* apply: transP; first (apply: subst_right; apply/symP; apply: compm0). *)
+(* apply/reflP. *)
+
+(* Definition rem2 X : *)
+(*   comma_mor (CommaOb F (idf _) (Category.id (F X))) *)
+(*             (adj.2 (CommaOb (idf _) G (adj_unit adj X))). *)
+(* apply: (Pairing ('pfst ((adj2C adj).2 _)) ('psnd ((adj2C adj).2 _))). *)
+(* Defined. *)
+
+Lemma adj_counitK' X :
+   adj.2 (CommaOb (idf _) G (adj_unit adj X))
+== (CommaOb F (idf _) (Category.id (F X))).
+Proof.
+set id' := CommaOb F (idf _) (Category.id (F X)).
+apply: transP.
+ apply fun_inj.
+ apply/symP.
+ apply (Pairing (box1 adj id') (box2 adj id')).
+ constructor; constructor => /=;
+ by case: adj1C => ? ? [] /= /(_ id') [H11 H12] /(_ id') [H21 H22].
+case: adj_isom => [] [H1 H2 [H1' H2']] ?.
+apply: (Pairing (H1 id') (H2 id')).
+constructor; first apply H1'; last apply H2'.
+Defined.
+
+(* Lemma adj_counitK_lem2 X : *)
+(*  (adj_counitK' X).2.1 == ' pfst ((adj2C adj).2 (CommaOb (idf _) G (adj_unit adj X))). *)
+(* Proof. *)
+(* rewrite /=. *)
+(* unfold adj2C, adj_unit, adj1C. *)
+(* case: adj => /= L R [] [[f1 g1 [p11 p12]] [f2 g2 [p21 p22]]] [bH11 bH12] [bH1H1 bH1H2]. *)
+(* rewrite /=. *)
+(* apply: transP; last do !(apply: subst_left; try by (apply compm0 || apply comp0m)). *)
+(* do 3!(apply: transP; last do !(apply: subst_right; try by (apply compm0 || apply comp0m))). *)
+(* apply: isomKR. *)
+(*  set T := , _. *)
+(*  constructor. *)
+(*  case: (p11 T) => H ?. *)
+(*  apply H. *)
+(*  case: (p12 T) => H ?. *)
+(*  apply H. *)
+(* apply: transP; last first. *)
+(*  set T' := , _. *)
+(*  set T := , _. *)
+(*  have H: ((bH11 \compnf R) T).1 \compm (g2 T).1 \compm (f1 T').1 ==  *)
+(*  'pfst ((bH11 \compnf R) T \compm  *)
+(*  '(fcom _ _) (g2 T) \compm '(fcom _ _) (f1 T')). *)
+(*   apply/reflP. *)
+(*  apply/symP; apply H. *)
+(* apply: transP. *)
+(*  set T := ' R _. *)
+(*  apply: (_ : _ == 'pfst ('(fcom _ _) T)). *)
+(*   apply/reflP. *)
+(* apply: pres_equiv. *)
+(* apply: transP. *)
+(*  apply: compm0. *)
+(* apply: transP. *)
+(*  apply: subst_right. *)
+(*  apply/symP. *)
+(*  apply: bH1H2. *)
+(* apply: transP. *)
+(*  apply/symP; apply: compmA. *)
+(* apply: transP. *)
+(*  apply: subst_left. *)
+(*  apply/symP; apply: naturality. *)
+(* apply: transP. *)
+(*  apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply/symP; apply: compmA. *)
+(* apply: subst_right. *)
+(* apply: isomKR. *)
+(*  constructor. *)
+(*   apply: bH1H1. *)
+(*   apply: bH1H2. *)
+(* apply: transP; last first. *)
+(*  apply/symP; apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply: subst_right. *)
+(*  set T := , _. *)
+(*  apply (naturality bH11 (f1 T)). *)
+(* apply: transP; last first. *)
+(*  apply: compmA. *)
+(* apply/symP.  *)
+(* apply: isomKR. *)
+(*  apply: pres_isom. *)
+(*  constructor. *)
+(*  apply p12. *)
+(*  apply p11. *)
+(* apply: transP; last first. *)
+(*  apply: pres_comp. *)
+(* apply: isomKR. *)
+(*  set T := , _. *)
+(*  set S := , _. *)
+(*  constructor. *)
+(*   apply (bH1H2 S). *)
+(*   apply (bH1H1 S). *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply (pres_equiv (fcom (idf _) G)). *)
+(*  apply/symP. *)
+(*  apply: transP. *)
+(*   apply: pres_comp. *)
+(*  apply: subst_left. *)
+(*   apply: isomK. *)
+(*    constructor. *)
+(*     apply: (Pairing f2 g2); by constructor. *)
+(*     apply: (Pairing f1 g1); by constructor. *)
+(* apply: transP. *)
+(*  apply: compm0. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply/symP; *)
+(*  apply: (pres_comp (fcom (idf C) G)). *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply/symP; *)
+(*  apply: (pres_comp (fcom (idf C) G)). *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply/symP; *)
+(*  apply: (pres_comp (fcom (idf C) G)). *)
+(* do !(apply: transP; last (apply/symP; apply compmA)). *)
+(* apply: subst_right. *)
+(* apply: transP; last first. *)
+(*  apply: subst_right. *)
+(*  apply: subst_right. *)
+(*  set T := , _. *)
+(*  set S := , _. *)
+(*  apply: (naturality bH12 (g1 S)). *)
+(* unfold box1. *)
+(* unfold adj1C. *)
+(* apply: transP; last apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: pres_comp. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: (naturality f2). *)
+(* apply: transP; last first. *)
+(* apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: subst_right. *)
+(*  apply/symP. *)
+(*  apply: isomK. *)
+(*   constructor. *)
+(*    apply: (Pairing f2 g2); by constructor. *)
+(*    apply: (Pairing f1 g1); by constructor. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: subst_left. *)
+(*  apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply/symP. *)
+(*  apply p22. *)
+(* set T' := , _. *)
+(* set T := , _. *)
+(* have: id == (bH11 T) \compm '(fcom _ _) (f2 (L T)) \compm (bH12 (R (L T))) \compm '(fcom _ _) (g1 T). *)
+(* apply/symP. *)
+(* apply: isomKR. *)
+(*  constructor. *)
+(*   apply p11. *)
+(*   apply p12. *)
+(* apply: transP; last apply: comp0m. *)
+(* apply: transP; last (apply/symP; apply: compm0). *)
+(* apply/symP. *)
+(* apply: isomKL. *)
+(*  constructor. *)
+(*   apply p12. *)
+(*   apply p11. *)
+(* do !(apply: transP; last apply: compmA). *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: compmA. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: (naturality bH11). *)
+(* apply/symP. *)
+(* apply: isomKR.  *)
+(*  constructor. *)
+(*   apply bH1H1. *)
+(*   apply bH1H2. *)
+(* apply: transP; last first. *)
+(*  apply comp0m. *)
+(* apply: transP. *)
+(*  apply compmA. *)
+(* Check naturality bH12 _. *)
+ 
+(*  apply/symP. *)
+(* rewrite /=. *)
+
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: subst_left. *)
+(*  apply comp0m. *)
+(* apply: transP; last first. *)
+(*  apply: subst_left. *)
+(*  apply: subst_left. *)
+(*  apply: pres_equiv. *)
+(*  apply: (naturality f2). *)
+ 
+(* constructor. *)
+(* rewrite /=. *)
+ 
+(* Check naturality bH11 _. *)
+ 
+ 
+(*  apply: pres_equiv. *)
+(*  apply: (naturality g2). *)
+(* apply: transP; last first. *)
+(*  apply/symP. *)
+(*  apply: pres_equiv. *)
+(*  apply/symP. *)
+(*  apply: compmA. *)
+(*  apply: subst_left. *)
+(*  apply/symP; *)
+(*  apply: (naturality bH11). *)
+ 
+(* Check (naturality bH11 _). *)
+(* apply: transP. *)
+(*  unfold box1. *)
+(*  rewrite /=. *)
+ 
+(* first  *)
+(* Check naturality g2 _. *)
+
+(* Lemma adj_counitK_lem1 X : *)
+(*     (adj_counitK' X).1.2 *)
+(* == ' psnd ((adj2C adj).1 (CommaOb (idf _) G (adj_unit adj X))). *)
+(* Proof. *)
+(* unfold adj_counitK', adj_isom. *)
+(* rewrite /=. *)
+(* unfold adj2C, adj_unit, adj1C. *)
+(* case: adj => /= L R [] [[f1 g1 [p11 p12]] [f2 g2 [p21 p22]]] [bH11 bH12] [bH1H1 bH1H2]. *)
+Definition adj_counit'' X : Mor (((F \compf G) \compf F) X, F X).
+  Check (box2 adj _).
+  Print box1.
+Check (' (adj.2) (box2 adj _)).2 \compm
+(adj.2 (CommaOb (idf _) G (adj_unit adj X))) \compm 'F ((' (adj.2) (box1 adj _)).1 \compm (adj_isom.1.2 _).1).
+((adj_isom.1.1 _).2 \compm (' (adj.2) (box2 adj _)).2 \compm
+(adj.2 (CommaOb (idf _) G (adj_unit adj X))) \compm 'F ((' (adj.2) (box1 adj _)).1 \compm (adj_isom.1.2 _).1)).
+Check adj_unitE adj
+((adj_isom.1.1 (CommaOb F (idf _) (Category.id (F X)))).2 \compm (' (adj.2) (box2 adj id)).2 \compm
+(adj.2 (CommaOb (idf _) G (adj_unit adj X))) \compm 'F ((' (adj.2) (box1 adj id)).1 \compm (adj_isom.1.2 (CommaOb F (idf _) (Category.id (F X)))).1)).
+ Check (' (adj.2) (box1 adj id) \compm adj_isom.1.2 (CommaOb F (idf _) (Category.id (F X))))..
+  Check (adj_counitK' (G (F X))).1.2.
+         \compm (adj.2 (CommaOb (idf _) G (adj_unit adj X))) \compm 'F (adj_counitK' X).2.1) => /=.
+  move: ((adj_counitK' X).1.2 \compm (adj.2 (CommaOb (idf _) G (adj_unit adj X))) \compm 'F (adj_counitK' X).2.1) => /=.
+  Check ((adj_counitK' X).1.2 \compm (adj.2 (CommaOb (idf _) G (adj_unit adj X))) \compm 'F (adj_counitK' X).2.1).
+Check (com_isomK (adj_counitK' X)).
+  Check (adj_counitK' X).
+  Check (adj_unit adj X).
+  apply: 
+  
+  
+Lemma adj_counit' : Nat (F \compf G \compf F, F).
+Check (adj_counit adj \compnf F) _.
+
+Lemma adj_counitK : F \compf G \compf F == F.
+Proof.
+apply: (Pairing (adj_counit adj \compnf F) (F \compfn adj_unit adj)).
+apply Isomorphisms => X; last first.
+apply: transP; first apply: adj_counitE.
+apply/symP.
+apply: transP; first apply: (com_isomK (adj_counitK' X)).
+do !apply: compm_comp; [|apply/reflP|].
+
+Lemma adj_pres_limit I
+      (d : Fun (I, C)) Ld dm LFd Fdm
+      (limd : limit d Ld dm) (limFd : limit (F \compf d) LFd Fdm)
+  : cones_map d F Ld == LFd.
+Proof.
+  Check adj_unit (vertex Ld).
+  Check mor LFd _.
+  Check (cones_map d F).
+  Check (cones_map d (G \compf F)).
+apply: (Pairing _ (Fdm ((cones_map d F) Ld))).
+   apply: (Pairing _ pt) => i.
+  apply: limit_is_the_unique.
+  rewrite /=.
+  have R: Mor ((cones_map d F) Ld, LFd).
+   Check dm Ld.
+  
+  Mor (vertex Ld, G (vertex LFd))
+  Check Mor (F (vertex Ld), vertex LFd).
+  Check (mor (adj.1 (@CommaOb _ _ _ G (idf _) _ _ (Category.id (G (vertex LFd)))))).
+  case: G adj => Go [Gm ? ? ?] ? ?.
+  case: F LFd Fdm limFd => Fo [Fm ? ? ?] ? ? LFd Fdm limFd.
+  case: LFd Fdm limFd => LFdD [] /= LFd Fdm limFd.
+  case: Ld dm limd => LdD [] /= Ld dm limd.
+  move=> adj.
+  case: adj => [].
+  case.
+  rewrite /=.
+  case.
+  [ [/= ? ? f] [fm ???] ??]. [g [gm ???] ??] H /=.
+  
+   vm_compute.
+  rewrite /=.
+  move=> adj.
+   case: 
+   rewrite /=.
+  Check mor 
+  (* Check  (cones_map (F \compf d) G LFd). *)
+  case: (cones_map (F \compf d) G LFd) => dom [] /= map.
+  Check map _.
+  Check (@CommaOb _ _ _ (G \compf F) (idf _) _ _ map).
+  Check (CommaOb map). : Ob (cones (G \compf (F \compf d)))).
+  Check comma_mor.
+  cones
+  Check (Pairing map pt _ : @comma_mor _ _ _ _ _ _ _).
+  
+  Check (dm \compnf _).
+   Check (( \compfn dm)).
+  Check 
+  Check cones_map (F \compf d) G LFd.
+  
+  Check (F \compfn (mor Ld)) _.
+  Check mor (adj.1 (@CommaOb _ _ _ G (idf _) _ _ (Category.id (G (vertex LFd))))).
+  Check mor (adj.2 (@CommaOb _ _ _ (idf _) F _ _ (Category.id (F (vertex Ld))))).
+  
+  Check mor (adj.1 (@CommaOb _ _ _ G (idf _) _ _ ((comp0f G).1 _ \compm (Category.id (G (vertex LFd)))))).
+  Check mor (adj.1 (@CommaOb _ _ _ G (idf _) _ _ ((Category.id (G (vertex LFd)))))).
+  Check mor (adj.2 (@CommaOb _ _ _ (idf _) F _ _ ((Category.id (F (vertex Ld))) \compm (comp0f F).1 _))).
+                              ((comp0f F).1 _ \compm (Category.id (G (vertex LFd))))))).
+  Check (mor (adj.2 (@CommaOb _ _ _ (idf _) F _ _)
+                              ((comp0f F).1 _ \compm (Category.id (G (vertex LFd))))))).
+  Check (domL LFd).
+   rewrite /comma_mor.
+            _).
+   rewrite /=.
+   Check (diag_mor I).
+Check 
+  Check (F \compfn Ld).
+  move: (Fdm (cones_map d F Ld)).
+  move=> L.
+  have R : comma_mor (, (F \compfn Ld) \compn diagDR I F LdD) (, LFd) .
+  
+  (, (F \compfn Ld) \compn diagDR I F LdD)
+  == (, LFd)
+  case => /= F [] fH.
+  heck (Fdm Ld).
+  apply: Pairing.
+  Check (dm _).1.
+  Check (limd _).
+  have: cones d.
+  rewrite /=.
+   apply: CommaOb.
+   apply: (NatType _ _ _).
+   apply: (NatMixin _).
+   move=> a a' f /=.
+   rewrite /=.
+   rewrite /=.
+     NaturalTransformation.
+   apply:
+   Check (G (vertex LFd)).
+  Check dm (G (vertex LFd)).
+  Check .
+        \compn _.
+Check Fdm.
+(* have: domR (adj.1 (, (comp0f G).1 (vertex LFd) \compm id)) = G. *)
+(* apply: Isomorphisms. *)
+have: domR (adj.1 (, (comp0f G).1 (vertex LFd) \compm id)) = G (vertex LFd).
+Check (mor (adj.1 (@CommaOb _ _ _ G (idf _) _ _ ((comp0f G).1 _ \compm (Category.id (G (vertex LFd))))))
+: Mor (_, F (G _))).
+Check 
+Check cones_map.
+Check dm.
+Check (limd _ (dm _)).
+case: limd.
+case: adj => [[f ? ? ?] [g ? ? ?] fg] /=.
+rewrite /=.
+  Check (dm (cones_map d F LFd)).
+Check ((cones_map (F \compf d) G) LFd).
+Check , '(cones_map _ F) (dm Ld).
+move: (mor id').
+subst id';
+rewrite /=.
+Check (G (vertex LFd)).
+Check ((cones_map d (G \compf F)) Ld).
+Check (cones_map (F \compf d) G) .
+Check '(cones_map (F \compf d) G) (dm _).
+Check LFd.
+Check mor id'.
+case: adj => L R [H1 H2].
+move: (mor (L (id' (vertex LFd)))); subst id'.
+move=> /= H.
+Check (cones_map (F \compf d) G) LFd.
+Check dm 
+rewrite /=.
+
+case: L H1 H2 => m ? ? ? H1 H2 /=.
+Check dm _.
+Check (H : Mor(vertex LFd, _)).
+Check (cones_map (F \compf d) G) ((cones_map d F) Ld).
+Check ( LFd).
+rewrite /=.
+move: (fun a => 
+Check .
+rewrite /=.
+Check '(cones_map d F) 
+case: (Fdm (cones_map d F Ld)) => /= f [].
+rewrite /=.
+rewrite equivE.
+rewrite /=.
+Check dm Ld.
+apply: transP; last first.
+ apply: vertex_inj.
+ apply: limit_is_the_unique.
+  Check limit (F \compf d) (F (vertex Ld)).
+ apply/reflP.
+Check mor (L (id' _)).
+    Check domL (@CommaOb _ _ _ G (idf _) _ _ ((comp0f G).1 _ \compm (Category.id (G _)))).
+  Check (G \compfn idn _) _.
+  Check , 
+  idf F \compf G
+  Check F \compf G.
+  Check 'L id.
+  Check (H2.2 \compnf L) _.
+Check '(L \compf (R \compf L)) id .
+Check (compfA _ _ _).2 _.
+Check (H2.2 \compnf L) _ \compm (compfA _ _ _).2 _ \compm (L \compfn H1.1) _ \compm '(L \compf R \compf L) id \compm (H2.2 \compnf L) _.
+  Check (H1.1 \compnf R) _.
+  Check H2.2 \compnf L.
+  Check 'R (H2.2 _).
+  Check 
+  Check ('(adj.1) id).
+  Check (, 'G id).
+  Check (, 'G id).
+  Check (, '(G \compf F) id).
+  Check (fun X => L X).
+  Check ('L id).
+  Check adj.1.
+  Check (adj.1 (, (Category.id _))).
+  Check (adj.1 , ('G (Category.id (F _)))).
+  Check (fun X => , ('G (Category.id (F X)))).
+  Check (fun X => '(adj.2) (Category.id X)).
+  
+  com (idf D) F
+  Check (fun X => adj.2 X).
+  Check adj.1.
+  Check (fun X => adj.2 (CommaOb (Category.id (G X)))).
+  move: 
+  rewrite equivE /=.
+  
+End Adjunction.
 
 (* Section Map. *)
 (* Variable C : category. *)
