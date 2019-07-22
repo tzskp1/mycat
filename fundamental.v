@@ -6,7 +6,6 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Universe Polymorphism.
 Set Polymorphic Inductive Cumulativity.
-Set Printing Universes.
 
 Local Notation "f == g" := (@equiv_op _ f g).
 
@@ -231,62 +230,120 @@ Module Functor.
 Section Axioms.
 Universes u u'.
 Import PartialEquiv.
-Variable domain : category@{u}.
-Variables codomain : category@{u'}.
-Variable map_of_objects : Ob domain -> Ob codomain.
+Variable domo : Type@{u}.
+Variable codo : Type@{u'}.
+Variable domm : domo -> domo -> Type@{u}.
+Variable codm : codo -> codo -> Type@{u'}.
+Variable domid : forall A, domm A A.
+Variable codid : forall A, codm A A.
+Variable domc : forall A B C,
+    domm B C -> domm A B -> domm A C.
+Variable codc : forall A B C,
+    codm B C -> codm A B -> codm A C.
+Variable dome : forall A B, Equivalence.mixin_of (domm A B).
+Variable code : forall A B, Equivalence.mixin_of (codm A B).
+Variable map_of_objects : domo -> codo.
 Variable map_of_morphisms :
-  forall A B, Mor(A, B) -> Mor(map_of_objects A, map_of_objects B).
+  forall A B, domm A B -> codm (map_of_objects A) (map_of_objects B).
 Definition maps_identity_to_identity :=
-  forall A, @map_of_morphisms A A (Category.id A) == (Category.id (map_of_objects A)).
+  forall A,
+    @equiv_op (EquivType _ (code _ _)) 
+    (@map_of_morphisms A A (domid A)) (codid (map_of_objects A)).
 Definition preserve_composition :=
-  forall A B C (f : Mor(A, B)) (g : Mor(B, C)),
-  map_of_morphisms (g \compm f) == map_of_morphisms g \compm (map_of_morphisms f).
+  forall A B C (f : domm A B) (g : domm B C),
+    @equiv_op (EquivType _ (code _ _)) 
+    (map_of_morphisms (domc g f))
+    (codc (map_of_morphisms g) (map_of_morphisms f)).
 Definition preserve_equivalence :=
-  forall A B (f f' : Mor(A, B)),
-    f == f' -> map_of_morphisms f == map_of_morphisms f'.
+  forall A B (f f' : domm A B), 
+    @equiv_op (EquivType _ (dome _ _)) f f' ->
+    @equiv_op (EquivType _ (code _ _))
+    (map_of_morphisms f) (map_of_morphisms f').
 End Axioms.
 
 Structure mixin_of@{u u'}
-          (dom : category@{u})
-          (cod : category@{u'}) map_of_objects :=
+  (domo : Type@{u}) (codo : Type@{u'})
+  domm codm domid codid domc codc dome code map_of_objects :=
   Mixin {
       map_of_morphisms;
-      id_id : @maps_identity_to_identity dom cod map_of_objects map_of_morphisms;
-      pres_comp : @preserve_composition dom cod map_of_objects map_of_morphisms;
-      pres_equiv : @preserve_equivalence dom cod map_of_objects map_of_morphisms;
+      id_id : @maps_identity_to_identity
+      domo codo domm codm domid codid code map_of_objects map_of_morphisms;
+      pres_comp : @preserve_composition
+      domo codo domm codm domc codc code map_of_objects map_of_morphisms;
+      pres_equiv : @preserve_equivalence
+      domo codo domm codm dome code map_of_objects map_of_morphisms;
     }.
 Local Notation class_of := mixin_of (only parsing).
 
+Notation pass C D f :=
+(@f (Ob C) (Ob D) _ _
+(@Category.id _ (Category.class C))
+(@Category.id _ (Category.class D))
+(@Category.compm _ (Category.class C))
+(@Category.compm _ (Category.class D))
+(@Category.equiv _ (Category.class C))
+(@Category.equiv _ (Category.class D))).
+
 Section ClassDef.
-Structure type@{u u'} dom cod :=
-  Pack { map; _: @class_of@{u u'} dom cod map; _: Type@{u}; _: Type@{u'} }.
+Structure type@{u u'}
+  (domo : Type@{u}) (codo : Type@{u'})
+  domm codm domid codid domc codc dome code :=
+  Pack {
+      map;
+      _: @class_of@{u u'}
+      domo codo domm codm domid codid domc codc dome code map;
+      _: Type@{u};
+      _: Type@{u'}
+    }.
 Universes u u'.
-Variables (domT : category@{u})
-          (codT : category@{u'})
-          (cT : @type domT codT)
-          (mapT : Ob domT -> Ob codT).
-Definition class := let: Pack _ c _ _ := cT return @class_of@{u u'} _ _ (map cT) in c.
-Definition pack c := @Pack domT codT mapT c (Ob domT) (Ob codT).
-Definition clone (c : mixin_of mapT) (_ : phant_id (pack c) cT) := pack c.
+Variables
+(domT : category@{u}) (codT : category@{u'})
+(cT : pass domT codT type)
+(mapT : Ob domT -> Ob codT).
+Definition class := let: Pack _ c _ _ := cT
+return @class_of@{u u'} _ _ _ _ _ _ _ _ _ _ (map cT) in c.
+Definition pack c :=
+@pass domT codT Pack mapT c (Ob domT) (Ob codT).
+Definition clone
+(c : mixin_of _ _ _ _ _ _ mapT)
+(_ : phant_id (pack c) cT) := pack c.
 End ClassDef.
 
 Module Notations.
-Notation "' F" := (@map_of_morphisms _ _ _ (class F) _ _) (at level 1).
+Notation "' F" :=
+(@map_of_morphisms _ _ _ _ _ _ _ _ _ _ _ (class F) _ _) (at level 1).
 Coercion map: type >-> Funclass.
-Notation functor := type.
+Definition functor@{u v} C D := (@pass C D type@{u v}).
 Notation FunMixin := Mixin.
 Notation FunType C D m := (@pack C D _ m).
 Notation id_id := (fun F => (id_id (class F))).
 Notation pres_comp := (fun F => (pres_comp (class F))).
 Notation pres_equiv := (fun F => (pres_equiv (class F))).
-Notation "'Fun' ( C , D )" := (@type C D).
+Notation "'Fun' ( C , D )" := (functor C D).
+Local Definition get_cats {C D fo}
+(_ : forall A B, morph C A B -> morph D (fo A) (fo B)) := (C, D).
+Arguments get_cats /.
+Notation maps_identity_to_identity f :=
+(@maps_identity_to_identity _ _ _ _
+(@Category.id _ (Category.class (get_cats f).1))
+(@Category.id _ (Category.class (get_cats f).2))
+(@Category.equiv _ (Category.class (get_cats f).2)) _ f).
+Notation preserve_composition f :=
+(@preserve_composition _ _ _ _
+(@Category.compm _ (Category.class (get_cats f).1))
+(@Category.compm _ (Category.class (get_cats f).2))
+(@Category.equiv _ (Category.class (get_cats f).2)) _ f).
+Notation preserve_equivalence f :=
+(@preserve_equivalence _ _ _ _
+(@Category.equiv _ (Category.class (get_cats f).1))
+(@Category.equiv _ (Category.class (get_cats f).2)) _ f).
 End Notations.
 
 Module Composition.
 Import Notations.
 Section compf.
 Variables (C D E : category) (G : Fun (D, E)) (F : Fun (C, D)).
-Definition compfm A B (f : Mor(A, B)) : Mor((G \o F) A, (G \o F) B) := 'G ('F f).
+Definition compfm A B (f : Mor (A, B)) : Mor ((G \o F) A, (G \o F) B) := 'G ('F f).
 Lemma compf_id_id : maps_identity_to_identity compfm.
 Proof.
 move=> ?.
@@ -331,7 +388,7 @@ apply: transP; last first.
 apply compm0.
 Defined.
 End trivials.
-Notation "F \compf G" := (compf F G) (at level 40).
+Notation "F \compf G" := (@compf _ _ _ F G) (at level 40).
 End Composition.
 
 Module Identity.
@@ -611,12 +668,12 @@ Import PartialEquiv.
 Definition funs_equivMixin C D := obs_equivMixin (funs C D).
 Lemma cats_compmA : @Category.associativity_of_morphisms@{u'''} _ _ compf@{u u' u''} funs_equivMixin.
 Proof.
-  move => /= C D E F h i j.
-  apply: (Pairing 
-           (NatType _ _ (@NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) _ _ (fun _ => id) (@idn_map_naturality _ _ _)))
-           (NatType _ _ (@NatMixin _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) _ _ (fun _ => id) (@idn_map_naturality _ _ _)))).
-  apply: Isomorphisms => X;
-  apply/symP; by apply: comp0m.
+move => /= C D E F h i j.
+apply (Pairing 
+(NatType _ _ (@NatMixin _ _ ((j \compf i) \compf h) (j \compf (i \compf h)) _ _ (fun _ => id) (@idn_map_naturality _ _ _)))
+(NatType _ _ (@NatMixin _ _ (j \compf (i \compf h)) ((j \compf i) \compf h) _ _ (fun _ => id) (@idn_map_naturality _ _ _)))).
+constructor => X;
+apply/symP; by apply comp0m.
 Defined.
 
 Lemma compf0 C D (f : Fun (C, D)) :
@@ -624,9 +681,9 @@ Lemma compf0 C D (f : Fun (C, D)) :
 Proof.
 set L := NatType _ _ (@NatMixin _ _ f (f \compf idf _) _ _ (idn _) (idn_map_naturality _)).
 set R := NatType _ _ (@NatMixin _ _ (f \compf idf _) f _ _ (idn _) (idn_map_naturality _)).
-apply: (Pairing L R);
-apply: Isomorphisms => X /=;
-apply/symP; by apply: comp0m.
+apply (Pairing L R);
+constructor => X;
+apply/symP; by apply comp0m.
 Defined.
 
 Lemma comp0f C D (f : Fun (C, D)) :
@@ -634,9 +691,9 @@ Lemma comp0f C D (f : Fun (C, D)) :
 Proof.
 set L := NatType _ _ (@NatMixin _ _ f (f \compf idf _) _ _ (idn _) (idn_map_naturality _)).
 set R := NatType _ _ (@NatMixin _ _ (f \compf idf _) f _ _ (idn _) (idn_map_naturality _)).
-apply: (Pairing L R);
-apply: Isomorphisms => X /=;
-apply/symP; by apply: comp0m.
+apply (Pairing L R);
+constructor => X;
+apply/symP; by apply comp0m.
 Defined.
 
 Lemma cats_compm0 : @Category.identity_morphism_is_right_identity@{u'''} category _ idf compf@{u u' u''} funs_equivMixin.
@@ -783,22 +840,23 @@ End Down.
 End Down.
 
 Definition down C : Fun (C, Down.down C).
-apply: (FunType _ _ (@FunMixin _ _ _ (@Down.get_down_mor C) _ _ _)).
+apply: (FunType _ _ (FunMixin (_ : _ (@Down.get_down_mor C)) _ _)).
 case: C => ? [] //=; intros; move=> ?; intros; apply/reflP.
 case: C => ? [] //=; intros; move=> ?; intros; apply/reflP.
 case: C => ? [] //=; intros.
 move=> ? ? ? ? H; by rewrite equivE /= Equivalence.downK.
 Defined.
 Definition up C : functor (Down.down C) C.
-apply: (@Functor.pack (Down.down C) C).
-apply: (@FunMixin _ _ (@Down.get_up C) (@Down.get_up_mor C) _ _ _).
+apply: (FunType (Down.down C) C (FunMixin (_ : _ (@Down.get_up_mor C)) _ _)).
 case: C => ? [] //=; intros; move=> ?; intros; apply/reflP.
 case: C => ? [] //=; intros; move=> ?; intros; apply/reflP.
 case: C => ? [] //=; intros.
 move=> ? ? ? ?; by rewrite equivE /= Equivalence.downK.
 Defined.
 
-Lemma down_upK C : down C \compf up C == idf (Down.down C).
+Lemma down_upK C :
+  @equiv_op (obs_equivType (funs (Down.down C) (Down.down C)))
+  (down C \compf up C) (idf _).
 Proof.
 apply (fun_equivE (fun (A : Down.down C) =>
 Congruence.suff_eq (Down.up_down A) : (down C \compf up C) A == idf _ A)).
@@ -831,8 +889,12 @@ Section Opposite.
 Notation opposite_category := op_catType.
 Notation "'Op' C" := (opposite_category C) (at level 1).
 Variable C : Ob cats.
-Local Notation F := (FunType _ _ (@FunMixin (Op (Op C)) C _ (fun x y f => f) (fun _ => reflP) (fun _ _ _ _ _ => reflP) (fun _ _ _ _ => ssrfun.id)) : Mor(Op (Op C), C)).
-Local Notation G := (FunType _ _ (@FunMixin C (Op (Op C)) _ (fun x y f => f) (fun _ => reflP) (fun _ _ _ _ _ => reflP) (fun _ _ _ _ => ssrfun.id)) : Mor(C, Op (Op C))).
+Local Notation F := (FunType (Op (Op C)) C
+(FunMixin ((fun _ => reflP) : maps_identity_to_identity (fun x y f => f))
+(fun _ _ _ _ _ => reflP) (fun _ _ _ _ => ssrfun.id)) : Mor(Op (Op C), C)).
+Local Notation G := (FunType C (Op (Op C))
+(FunMixin ((fun _ => reflP) : maps_identity_to_identity (fun x y f => f))
+(fun _ _ _ _ _ => reflP) (fun _ _ _ _ => ssrfun.id)) : Mor(C, Op (Op C))).
 Local Lemma HoFG : forall A, (F \compf G) A == idf _ A.
 Proof. move=> X. apply/reflP. Defined.
 Local Lemma HoGF : forall A, (G \compf F) A == idf _ A.
@@ -2193,17 +2255,16 @@ apply: (Pairing (H1 id') (H2 id')).
 constructor; first apply H1'; last apply H2'.
 Defined.
 
-Lemma adj_counitK : F \compf G \compf F == F.
-Proof.
-apply: (Pairing (adj_counit \compnf F) (F \compfn adj_unit)).
-constructor => X; last first.
-apply: transP; first apply: adj_counitE.
-apply/symP.
-apply: transP; first apply: (com_isomK' (adj_counitK' X)).
-do !apply: compm_comp; [|apply/reflP|].
-unfold adj_counitK'.
-unfold adj_unit, adj2C, adj1C.
-apply: transP.
-case: adj => /= L R [] [[f1 g1 [p11 p12]] [f2 g2 [p21 p22]]] [bH11 bH12] [bH1H1 bH1H2].
+(* Lemma adj_counitK : F \compf G \compf F == F. *)
+(* Proof. *)
+(* apply: (Pairing (adj_counit \compnf F) (F \compfn adj_unit)). *)
+(* constructor => X; last first. *)
+(* apply: transP; first apply: adj_counitE. *)
+(* apply/symP. *)
+(* apply: transP; first apply: (com_isomK' (adj_counitK' X)). *)
+(* do !apply: compm_comp; [|apply/reflP|]. *)
+(* do !unfold adj_counitK', adj_unit, adj2C, adj1C, seq_nat, box2, box1 => /=. *)
+(* case: adj => /= L R. *)
+
 End Unit.
 End Adjunction.

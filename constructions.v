@@ -13,35 +13,11 @@ Local Notation "f == g" := (@equiv_op _ f g).
 Section Adjunction.
 Import PartialEquiv.
 Section Unit.
-Universes p q.
-Constraint p < q.
-Variable C : category@{p}.
-Variable D : category@{p}.
-Variables (F : functor@{p p} C D)
-          (G : functor@{p p} D C)
-          (adj : adjunction@{q p} F G).
-Local Definition adj_isom : isomorphisms adj.1 adj.2.
-by case: adj => ? ? [] /=.
-Defined.
-
-Lemma com_isomK a b (f : Mor (F a, idf _ b)) g
-  (E : @equiv_op (obs_equivType (com _ _)) g (, f)) :
-  f == E.1.2 \compm g \compm 'F E.2.1.
-Proof.
-case: E => [] [/= f1 f2 fH] [/= g1 g2 gH] [H1 H2].
-apply: transP; last first.
- apply/symP; apply: compmA.
-apply: transP; last first.
- apply: subst_right.
- apply gH.
-apply: transP; last first.
- apply: compmA.
-apply: transP; last first.
- apply: subst_left.
- apply/symP.
- case: H2 => ?; apply.
-apply comp0m.
-Defined.
+Variable C : category.
+Variable D : category.
+Variables (F : functor C D)
+          (G : functor D C)
+          (adj : adjunction F G).
 
 (* Definition rem1 X : *)
 (*   comma_mor (adj.2 (CommaOb (idf _) G (adj_unit adj X))) *)
@@ -66,22 +42,6 @@ Defined.
 (*             (adj.2 (CommaOb (idf _) G (adj_unit adj X))). *)
 (* apply: (Pairing ('pfst ((adj2C adj).2 _)) ('psnd ((adj2C adj).2 _))). *)
 (* Defined. *)
-
-Lemma adj_counitK' X :
-   adj.2 (CommaOb (idf _) G (adj_unit adj X))
-== (CommaOb F (idf _) (Category.id (F X))).
-Proof.
-set id' := CommaOb F (idf _) (Category.id (F X)).
-apply: transP.
- apply fun_inj.
- apply/symP.
- apply (Pairing (box1 adj id') (box2 adj id')).
- constructor; constructor => /=;
- by case: adj1C => ? ? [] /= /(_ id') [H11 H12] /(_ id') [H21 H22].
-case: adj_isom => [] [H1 H2 [H1' H2']] ?.
-apply: (Pairing (H1 id') (H2 id')).
-constructor; first apply H1'; last apply H2'.
-Defined.
 
 (* Lemma adj_counitK_lem2 X : *)
 (*  (adj_counitK' X).2.1 == ' pfst ((adj2C adj).2 (CommaOb (idf _) G (adj_unit adj X))). *)
@@ -552,20 +512,21 @@ Defined.
 (* apply: pres_comp. *)
 (* apply: (NatType _ _ (NatMixin HN)). *)
 (* Defined. *)
-   
+
 Lemma adj_counitK : F \compf G \compf F == F.
 Proof.
 apply: (Pairing (adj_counit adj \compnf F)
                 (F \compfn adj_unit adj)).
-apply Isomorphisms => X; last first.
+(* apply: (Pairing (adj_counit \compnf F) (F \compfn adj_unit)). *)
+constructor => X; last first.
 apply: transP; first apply: adj_counitE.
 apply/symP.
-apply: transP; first apply: (com_isomK (adj_counitK' X)).
-unfold adj_counitK'.
-unfold adj_isom, adj_unit, adj2C, adj1C.
-case: adj => /= L R [] [[f1 g1 [p11 p12]] [f2 g2 [p21 p22]]] [bH11 bH12] [bH1H1 bH1H2].
-
+apply: transP; first apply: (com_isomK' (adj_counitK' adj X)).
 do !apply: compm_comp; [|apply/reflP|].
+unfold adj_counitK'.
+unfold adj_unit, adj2C, adj1C.
+unfold box1, box2.
+case: adj => /= L R.
 
 Lemma adj_pres_limit I
       (d : Fun (I, C)) Ld dm LFd Fdm
